@@ -10,39 +10,17 @@ $baseUrl = BASE_URL;
 $menu = [
     'Cadastros' => [
         ['chave' => 'usuarios',    'titulo' => 'Usuários',         'link' => $baseUrl . 'cadastros/usuarios.php'],
-        ['chave' => 'membros',     'titulo' => 'Membros',          'link' => $baseUrl . 'cadastros/membros.php'],
-        ['chave' => 'dizimos',     'titulo' => 'Dízimos',          'link' => $baseUrl . 'cadastros/dizimos.php'],
-        ['chave' => 'visitantes',  'titulo' => 'Visitantes',       'link' => $baseUrl . 'cadastros/visitantes.php'],
         ['chave' => 'lancamentos',  'titulo' => 'Lançamentos',       'link' => $baseUrl . 'cadastros/lancamentos.php'],
         ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos',   'link'  => $baseUrl . 'cadastros/grupos.php'], 
-        ['chave' => 'igrejas',     'titulo' => 'Igrejas',          'link' => $baseUrl . 'cadastros/igrejas.php'],
-        ['chave' => 'cargos',      'titulo' => 'Cargos',           'link' => $baseUrl . 'cadastros/cargos.php'],
-        ['chave' => 'tipo',        'titulo' => 'Tipo',             'link' => $baseUrl . 'cadastros/tipo.php'],
-        ['chave' => 'cursos',      'titulo' => 'Cursos',           'link' => $baseUrl . 'cadastros/cursos.php'],
-        ['chave' => 'eventos',     'titulo' => 'Eventos',          'link' => $baseUrl . 'cadastros/eventos.php'],
-        ['chave' => 'aulas',       'titulo' => 'Aulas',            'link' => $baseUrl . 'cadastros/aulas.php'],
-        ['chave' => 'professores', 'titulo' => 'Professores',      'link' => $baseUrl . 'cadastros/professores.php'],
-        ['chave' => 'atas',        'titulo' => 'Atas',             'link' => $baseUrl . 'cadastros/atas.php'],
-        ['chave' => 'historico_membro',    'titulo' => 'Histórico do Memnro',         'link' => $baseUrl . 'cadastros/historico_membro.php'],
     ],
 
-    'Consultas' => [
-        ['chave' => 'atas_pesquisa', 'titulo' => 'Pesquisa de Atas', 'link' => $baseUrl . 'consultas/atas_pesquisa.php'],
-    ],
 
-    'Ferramentas' => [
-        ['chave' => 'presencas',   'titulo' => 'Presenças',        'link' => $baseUrl . 'cadastros/presencas_lote.php'],
-        ['chave' => 'boas_vindas', 'titulo' => 'Boas-vindas',      'link' => $baseUrl . 'relatorios/boas_vindas.php'],
-    ],
 
     'Relatórios' => [
-        ['chave' => 'relatorios',         'titulo' => 'Aniversariantes',    'link' => $baseUrl . 'relatorios/aniversariantes.php'],
-        ['chave' => 'relatorios',         'titulo' => 'Lista de Membros',   'link' => $baseUrl . 'relatorios/lista_membros.php'],
-        ['chave' => 'lista_de_presencas', 'titulo' => 'Lista de Presenças', 'link' => $baseUrl . 'relatorios/lista_de_presencas.php'],
         ['chave' => 'relatorio_financeiro',         'titulo' => 'Relatório Finânceiro',    'link' => $baseUrl . 'relatorios/relatorio_financeiro.php'],
         ['chave' => 'fluxo_caixa',         'titulo' => 'Relatório de Fluxo de Caixa',    'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
         ['chave' => 'compromissos_pagar',         'titulo' => 'Compromissos a Pagar',    'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
-        ['chave' => 'prestacao_de_contas',         'titulo' => 'Prestação de Contas',    'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
+        ['chave' => 'relatorio_financeiro',         'titulo' => 'Prestação de Contas',    'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
     ],
 
     'Sessão' => [

@@ -7,26 +7,14 @@ require_once __DIR__ . '/../config/auth.php';
 verificaAcesso();
 require __DIR__ . '/../includes/menu.php';
 
-/* =====================
-   FILTROS
-===================== */
-$data_inicio = $_GET['inicio'] ?? '';
-$data_fim    = $_GET['fim'] ?? '';
+$data_inicio = $_GET['inicio'] ?? date('Y-m-01');
+$data_fim    = $_GET['fim'] ?? date('Y-m-t');
 
-$where = [];
-$params = [];
+$params = [
+    ':inicio' => $data_inicio,
+    ':fim'    => $data_fim
+];
 
-if ($data_inicio && $data_fim) {
-    $where[] = "DATE(COALESCE(data_pagamento, data_lancamento)) BETWEEN :inicio AND :fim";
-    $params[':inicio'] = $data_inicio;
-    $params[':fim'] = $data_fim;
-}
-
-$whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-
-/* =====================
-   BUSCA DADOS
-===================== */
 $sql = "SELECT 
             documento_numero,
             descricao,
@@ -34,108 +22,131 @@ $sql = "SELECT
             valor_nominal,
             valor_pago,
             data_lancamento,
+            data_vencimento,
             data_pagamento,
             status
         FROM lancamentos
-        $whereSQL
-        ORDER BY COALESCE(data_pagamento, data_lancamento) ASC";
+        WHERE data_vencimento BETWEEN :inicio AND :fim
+        ORDER BY data_vencimento ASC, descricao ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $lancamentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* =====================
-   CALCULAR FLUXO
-===================== */
-$saldo = 0;
-$total_entradas = 0;
-$total_saidas = 0;
+$saldo_previsto = 0;
+$total_entradas_previstas = 0;
+$total_saidas_previstas = 0;
 
+function dataBR($data) {
+    if (empty($data)) return '';
+    return date('d/m/Y', strtotime($data));
+}
+
+function moedaBR($valor) {
+    return number_format((float)$valor, 2, ',', '.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Fluxo de Caixa</title>
+<title>Previsão de Fluxo de Caixa</title>
 
 <style>
-body { font-family: Arial; margin: 20px; }
-table { border-collapse: collapse; width: 100%; }
+body { font-family: Arial; margin: 20px; background: #f4f6f8; }
+form { background: #fff; padding: 15px; border: 1px solid #ddd; margin-bottom: 20px; }
+input, button { padding: 7px; margin: 5px; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px; border: 1px solid #ccc; }
-th { background: #eee; }
+th { background: #2c3e50; color: white; }
 .entrada { color: green; font-weight: bold; }
 .saida { color: red; font-weight: bold; }
+.saldo { font-weight: bold; }
+.aberto { color: #c0392b; font-weight: bold; }
+.pago, .recebido { color: #207245; font-weight: bold; }
 </style>
 </head>
 <body>
 
-<h2>Fluxo de Caixa</h2>
+<h2>Previsão de Fluxo de Caixa</h2>
 
 <form method="get">
     <label>Data Inicial</label>
-    <input type="date" name="inicio" value="<?= $data_inicio ?>">
+    <input type="date" name="inicio" value="<?= htmlspecialchars($data_inicio) ?>" required>
 
     <label>Data Final</label>
-    <input type="date" name="fim" value="<?= $data_fim ?>">
+    <input type="date" name="fim" value="<?= htmlspecialchars($data_fim) ?>" required>
 
     <button type="submit">Filtrar</button>
 </form>
 
-<br>
-
 <table>
 <tr>
-    <th>Data</th>
+    <th>Vencimento</th>
     <th>Documento</th>
     <th>Descrição</th>
-    <th>Entrada</th>
-    <th>Saída</th>
-    <th>Saldo</th>
+    <th>Status</th>
+    <th>Entrada Prevista</th>
+    <th>Saída Prevista</th>
+    <th>Saldo Previsto</th>
 </tr>
 
-<?php foreach ($lancamentos as $l): 
+<?php if (empty($lancamentos)): ?>
+<tr>
+    <td colspan="7" style="text-align:center;">
+        Nenhum lançamento encontrado no período.
+    </td>
+</tr>
+<?php endif; ?>
 
-    $data = $l['data_pagamento'] ?: $l['data_lancamento'];
+<?php foreach ($lancamentos as $l): 
 
     $entrada = 0;
     $saida = 0;
 
-    if ($l['tipo'] == 'Receber') {
-        $entrada = $l['valor_pago'] ?: $l['valor_nominal'];
-        $saldo += $entrada;
-        $total_entradas += $entrada;
-    } else {
-        $saida = $l['valor_pago'] ?: $l['valor_nominal'];
-        $saldo -= $saida;
-        $total_saidas += $saida;
+    $valor = !empty($l['valor_pago']) ? $l['valor_pago'] : $l['valor_nominal'];
+
+    if ($l['tipo'] === 'Receber') {
+        $entrada = (float)$valor;
+        $saldo_previsto += $entrada;
+        $total_entradas_previstas += $entrada;
     }
+
+    if ($l['tipo'] === 'Pagar') {
+        $saida = (float)$valor;
+        $saldo_previsto -= $saida;
+        $total_saidas_previstas += $saida;
+    }
+
+    $classeStatus = strtolower($l['status'] ?? '');
 ?>
 
 <tr>
-    <td><?= htmlspecialchars($data) ?></td>
-    <td><?= htmlspecialchars($l['documento_numero']) ?></td>
-    <td><?= htmlspecialchars($l['descricao']) ?></td>
+    <td><?= dataBR($l['data_vencimento']) ?></td>
+    <td><?= htmlspecialchars($l['documento_numero'] ?? '') ?></td>
+    <td><?= htmlspecialchars($l['descricao'] ?? '') ?></td>
+    <td class="<?= $classeStatus ?>"><?= htmlspecialchars($l['status'] ?? '') ?></td>
 
     <td class="entrada">
-        <?= $entrada ? number_format($entrada, 2, ',', '.') : '' ?>
+        <?= $entrada ? 'R$ ' . moedaBR($entrada) : '' ?>
     </td>
 
     <td class="saida">
-        <?= $saida ? number_format($saida, 2, ',', '.') : '' ?>
+        <?= $saida ? 'R$ ' . moedaBR($saida) : '' ?>
     </td>
 
-    <td>
-        <?= number_format($saldo, 2, ',', '.') ?>
+    <td class="saldo">
+        R$ <?= moedaBR($saldo_previsto) ?>
     </td>
 </tr>
 
 <?php endforeach; ?>
 
 <tr>
-    <th colspan="3">Totais</th>
-    <th class="entrada"><?= number_format($total_entradas, 2, ',', '.') ?></th>
-    <th class="saida"><?= number_format($total_saidas, 2, ',', '.') ?></th>
-    <th><?= number_format($saldo, 2, ',', '.') ?></th>
+    <th colspan="4">Totais do Período</th>
+    <th class="entrada">R$ <?= moedaBR($total_entradas_previstas) ?></th>
+    <th class="saida">R$ <?= moedaBR($total_saidas_previstas) ?></th>
+    <th>R$ <?= moedaBR($saldo_previsto) ?></th>
 </tr>
 
 </table>

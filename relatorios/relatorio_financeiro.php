@@ -22,12 +22,12 @@ $where = [];
 $params = [];
 
 if ($data_inicio !== '') {
-    $where[] = "l.data_lancamento >= :data_inicio";
+    $where[] = "l.data_vencimento >= :data_inicio";
     $params[':data_inicio'] = $data_inicio;
 }
 
 if ($data_fim !== '') {
-    $where[] = "l.data_lancamento <= :data_fim";
+    $where[] = "l.data_vencimento <= :data_fim";
     $params[':data_fim'] = $data_fim;
 }
 
@@ -79,7 +79,7 @@ $sql = "SELECT
         FROM lancamentos l
         LEFT JOIN grupos g ON g.id_grupo = l.id_grupo
         $sqlWhere
-        ORDER BY l.data_lancamento DESC, l.id_lancamento DESC";
+        ORDER BY l.data_vencimento ASC, l.id_lancamento ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -266,10 +266,12 @@ function dataBr($data): string
             .botoes, form, nav, header, .menu {
                 display: none !important;
             }
+
             body {
                 background: white;
                 margin: 0;
             }
+
             .container {
                 box-shadow: none;
                 border-radius: 0;
@@ -285,12 +287,12 @@ function dataBr($data): string
     <form method="get">
         <div class="filtros">
             <div>
-                <label>Data Inicial</label>
+                <label>Data Inicial do Vencimento</label>
                 <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio) ?>">
             </div>
 
             <div>
-                <label>Data Final</label>
+                <label>Data Final do Vencimento</label>
                 <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim) ?>">
             </div>
 
@@ -397,7 +399,7 @@ function dataBr($data): string
         <table>
             <tr>
                 <th>Documento</th>
-                <th>Data</th>
+                <th>Data Lançamento</th>
                 <th>Descrição</th>
                 <th>Grupo</th>
                 <th>Tipo</th>

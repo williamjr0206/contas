@@ -12,7 +12,7 @@ $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 | Milbr:  https://seusite.com/cristaos/
 |--------------------------------------------------------------------------
 */
-$pastaProjeto = '/cristaos/';
+$pastaProjeto = '/contas/';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', $protocolo . $host . $pastaProjeto);

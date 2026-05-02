@@ -4,5 +4,5 @@ session_destroy();
 
 require __DIR__ . '/config/database.php';
 
-header("Location: " . BASE_URL . "index_site.html");
+header("Location: " . BASE_URL . "login.php");
 exit;
