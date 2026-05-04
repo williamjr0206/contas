@@ -11,7 +11,8 @@ $menu = [
     'Cadastros' => [
         ['chave' => 'usuarios',    'titulo' => 'Usuários',         'link' => $baseUrl . 'cadastros/usuarios.php'],
         ['chave' => 'lancamentos',  'titulo' => 'Lançamentos',       'link' => $baseUrl . 'cadastros/lancamentos.php'],
-        ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos',   'link'  => $baseUrl . 'cadastros/grupos.php'], 
+        ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos',   'link'  => $baseUrl . 'cadastros/grupos.php'],
+        ['chave' => 'nota_fiscal', 'titulo' => 'Importar Nota Fiscal',   'link'  => $baseUrl . 'cadastros/importar_nota_ia.php'],  
     ],
 
 

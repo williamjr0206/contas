@@ -15,6 +15,7 @@ $cards = [
     ['chave' => 'fluxo_caixa',     'titulo' => 'Fluxo de Caixa',                                   'texto' => 'Relatório de Fluxo de Caixa.',                  'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
     ['chave' => 'compromissos_pagar',     'titulo' => 'Compromissos a Pagar',                                   'texto' => 'Compromissos a Pagar.',                  'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
     ['chave' => 'relatorio_financeiro',     'titulo' => 'Prestação de Contas',                                   'texto' => 'Prestação de Contas.',                  'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
+    ['chave' => 'nota_fiscal',     'titulo' => 'Importações de Notas Fiscais',                                   'texto' => 'Importação de Notas.',                  'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
 ];
 ?>
 <!DOCTYPE html>

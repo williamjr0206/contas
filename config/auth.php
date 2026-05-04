@@ -141,6 +141,7 @@ function temPermissao(string $chave): bool
             'compromissos_pagar',
             'prestacao_de_contas',
             'historico_membro',
+            'nota_fiscal',
             
             'presencas',
             'relatorios',
