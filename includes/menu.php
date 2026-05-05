@@ -13,7 +13,8 @@ $menu = [
         ['chave' => 'lancamentos',  'titulo' => 'Lançamentos',       'link' => $baseUrl . 'cadastros/lancamentos.php'],
         ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos',   'link'  => $baseUrl . 'cadastros/grupos.php'],
         ['chave' => 'nota_fiscal', 'titulo' => 'Importar Nota Fiscal',   'link'  => $baseUrl . 'cadastros/importar_nota_ia.php'],
-        ['chave' => 'produto', 'titulo' => 'Produtos',   'link'  => $baseUrl . 'cadastros/produtos.php'],  
+        ['chave' => 'produto', 'titulo' => 'Produtos',   'link'  => $baseUrl . 'cadastros/produtos.php'],
+        ['chave' => 'movimento', 'titulo' => 'Lançamentos Estoque',   'link'  => $baseUrl . 'cadastros/movimentos.php'],  
     ],
 
 

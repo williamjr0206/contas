@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $id        = $_POST['id'] ?? null;
     $codigo = $_POST['codigo'] ?? '';
+    $fornecedor = $_POST['fornecedor'] ?? '';
     $descricao = $_POST['descricao'] ?? '';
     $preco = $_POST['preco'] ?? '';
     $unidade = $_POST['unidade'] ?? '';
@@ -23,22 +24,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id) {
         $sql = "UPDATE produtos 
-                SET codigo = :codigo, descricao = :descricao, preco = :preco,
+                SET codigo = :codigo, fornecedor = :fornecedor, descricao = :descricao, preco = :preco,
                     unidade = :unidade, saldo = :saldo, cadastrado_em = :cadastrado_em
                 WHERE id_produto = :id";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':id', $id);
     } else {
-        $sql = "INSERT INTO produtos (codigo, descricao, preco, unidade, saldo,
+        $sql = "INSERT INTO produtos (codigo, fornecedor, descricao, preco, unidade, saldo,
                                     cadastrado_em)
-                VALUES (:codigo, :descricao, :preco, :unidade, saldo,
+                VALUES (:codigo, :fornecedor, :descricao, :preco, :unidade, :saldo,
                         :cadastrado_em)";
 
         $stmt = $pdo->prepare($sql);
     }
 
     $stmt->bindParam(':codigo', $codigo);
+    $stmt->bindParam(':fornecedor',$fornecedor);
     $stmt->bindParam(':descricao', $descricao);
     $stmt->bindParam(':preco', $preco);
     $stmt->bindParam(':unidade', $unidade);
@@ -117,6 +119,9 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <label>Código do Produto</label>
 <input name="codigo" required value="<?= htmlspecialchars($editar['codigo'] ?? '') ?>">
 
+<label>Fornecedor</label>
+<input name="fornecedor" required value="<?= htmlspecialchars($editar['fornecedor'] ?? '') ?>">
+
 <label>Descrição</label>
 <input name="descricao" required value="<?= htmlspecialchars($editar['descricao'] ?? '') ?>">
 
@@ -129,7 +134,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <label>Saldo</label>
 <input type="number" name="saldo" step="0.0001" required value="<?= htmlspecialchars($editar['saldo'] ?? '') ?>">
 
-<label>Preço ou Custo</label>
+<label>Cadastrado em</label>
 <input type="date" name="cadastrado_em" required value="<?= htmlspecialchars($editar['cadastrado_em'] ?? '') ?>">
 
 
@@ -146,6 +151,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <table border="1">
 <tr>
     <th>Código</th>
+    <th>Fornecedor</th>
     <th>Descrição</th>
     <th>Preço / Custo em R$</th>
     <th>Unidade</th>
@@ -156,6 +162,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php foreach ($eventos as $e): ?>
 <tr>
     <td><?= htmlspecialchars($e['codigo']) ?></td>
+    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
     <td><?= htmlspecialchars($e['preco']) ?></td>
     <td><?= htmlspecialchars($e['unidade']) ?></td>

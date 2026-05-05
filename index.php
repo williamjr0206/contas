@@ -17,6 +17,7 @@ $cards = [
     ['chave' => 'relatorio_financeiro',     'titulo' => 'Prestação de Contas',                                   'texto' => 'Prestação de Contas.',                  'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
     ['chave' => 'nota_fiscal',     'titulo' => 'Importações de Notas Fiscais',                                   'texto' => 'Importação de Notas.',                  'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
     ['chave' => 'produto',     'titulo' => 'Cadastro de Produtos',                                   'texto' => 'Produtos.',                  'link' => $baseUrl . 'cadastros/produtos.php'],
+    ['chave' => 'movimento',     'titulo' => 'Lançamentos de Estoque',                                   'texto' => 'Lançamentos Estoque.',                  'link' => $baseUrl . 'cadastros/movimentos.php'],
 ];
 ?>
 <!DOCTYPE html>
