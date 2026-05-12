@@ -8,53 +8,197 @@ require_once __DIR__ . '/../config/auth.php';
 verificaAcesso();
 
 require __DIR__ . '/../includes/menu.php';
+
+/* =====================
+   FUNÇÃO PARA APLICAR SALDO
+===================== */
+function aplicarSaldoProduto(PDO $pdo, int $id_produto, float $quantidade, string $tipo): void
+{
+    if ($tipo === 'Entrada' || $tipo === 'Retorno') {
+        $sql = "UPDATE produtos 
+                SET saldo = COALESCE(saldo, 0) + :quantidade 
+                WHERE id_produto = :id_produto";
+    } elseif ($tipo === 'Saída') {
+        $sql = "UPDATE produtos 
+                SET saldo = COALESCE(saldo, 0) - :quantidade 
+                WHERE id_produto = :id_produto";
+    } else {
+        return;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        ':quantidade' => $quantidade,
+        ':id_produto' => $id_produto
+    ]);
+}
+
+/* =====================
+   FUNÇÃO PARA DESFAZER SALDO
+===================== */
+function desfazerSaldoProduto(PDO $pdo, int $id_produto, float $quantidade, string $tipo): void
+{
+    if ($tipo === 'Entrada' || $tipo === 'Retorno') {
+        $sql = "UPDATE produtos 
+                SET saldo = COALESCE(saldo, 0) - :quantidade 
+                WHERE id_produto = :id_produto";
+    } elseif ($tipo === 'Saída') {
+        $sql = "UPDATE produtos 
+                SET saldo = COALESCE(saldo, 0) + :quantidade 
+                WHERE id_produto = :id_produto";
+    } else {
+        return;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        ':quantidade' => $quantidade,
+        ':id_produto' => $id_produto
+    ]);
+}
+
 /* =====================
    SALVAR / EDITAR
 ===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $id        = $_POST['id'] ?? null;
+    $id = $_POST['id'] ?? null;
     $data_movimento = $_POST['data_movimento'] ?? '';
     $documento = $_POST['documento'] ?? '';
-    $codigo = $_POST['codigo'] ?? '';
-    $quantidade = $_POST['quantidade'] ?? '';
+    $id_produto = (int) ($_POST['id_produto'] ?? 0);
+    $quantidade = (float) ($_POST['quantidade'] ?? 0);
     $tipo = $_POST['tipo'] ?? '';
 
-    if ($id) {
-        $sql = "UPDATE movimento 
-                SET data_movimento = :data_movimento, documento = :documento, codigo = :codigo,
-                    quantidade = :quantidade, tipo = :tipo
-                WHERE id_movimento = :id";
+    try {
+        $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->bindParam(':id', $id);
-    } else {
-        $sql = "INSERT INTO movimento (data_movimento, documento, codigo, quantidade, tipo)
-                VALUES (:data_movimento, :documento, :codigo, :quantidade, :tipo)";
+        $stmtProduto = $pdo->prepare("
+            SELECT codigo 
+            FROM produtos 
+            WHERE id_produto = :id_produto
+        ");
+        $stmtProduto->execute([':id_produto' => $id_produto]);
+        $produto = $stmtProduto->fetch(PDO::FETCH_ASSOC);
 
-        $stmt = $pdo->prepare($sql);
+        if (!$produto) {
+            throw new Exception("Produto não encontrado.");
+        }
+
+        $codigo = $produto['codigo'];
+
+        if ($id) {
+            $stmtOld = $pdo->prepare("
+                SELECT id_produto, quantidade, tipo 
+                FROM movimento 
+                WHERE id_movimento = :id
+            ");
+            $stmtOld->execute([':id' => $id]);
+            $movAntigo = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+            if ($movAntigo) {
+                desfazerSaldoProduto(
+                    $pdo,
+                    (int)$movAntigo['id_produto'],
+                    (float)$movAntigo['quantidade'],
+                    $movAntigo['tipo']
+                );
+            }
+
+            $sql = "UPDATE movimento 
+                    SET data_movimento = :data_movimento,
+                        documento = :documento,
+                        id_produto = :id_produto,
+                        codigo = :codigo,
+                        quantidade = :quantidade,
+                        tipo = :tipo
+                    WHERE id_movimento = :id";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+
+        } else {
+            $sql = "INSERT INTO movimento 
+                    (data_movimento, documento, id_produto, codigo, quantidade, tipo)
+                    VALUES 
+                    (:data_movimento, :documento, :id_produto, :codigo, :quantidade, :tipo)";
+
+            $stmt = $pdo->prepare($sql);
+        }
+
+        $stmt->bindParam(':data_movimento', $data_movimento);
+        $stmt->bindParam(':documento', $documento);
+        $stmt->bindParam(':id_produto', $id_produto);
+        $stmt->bindParam(':codigo', $codigo);
+        $stmt->bindParam(':quantidade', $quantidade);
+        $stmt->bindParam(':tipo', $tipo);
+        $stmt->execute();
+
+        aplicarSaldoProduto($pdo, $id_produto, $quantidade, $tipo);
+
+        $pdo->commit();
+
+        header("Location: " . BASE_URL . "cadastros/movimentos.php");
+        exit;
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die("Erro ao salvar movimento: " . $e->getMessage());
     }
-
-    $stmt->bindParam(':data_movimento', $data_movimento);
-    $stmt->bindParam(':documento',$documento);
-    $stmt->bindParam(':codigo', $codigo);
-    $stmt->bindParam(':quantidade', $quantidade);
-    $stmt->bindParam(':tipo', $tipo);
-    $stmt->execute();
-
-    header("Location: " . BASE_URL . "cadastros/movimentos.php");
-    exit;
 }
 
+/* =====================
+   EXCLUIR MOVIMENTO
+===================== */
+if (isset($_GET['delete'])) {
+
+    $id = $_GET['delete'];
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmtOld = $pdo->prepare("
+            SELECT id_produto, quantidade, tipo 
+            FROM movimento 
+            WHERE id_movimento = :id
+        ");
+        $stmtOld->execute([':id' => $id]);
+        $movAntigo = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+        if ($movAntigo) {
+            desfazerSaldoProduto(
+                $pdo,
+                (int)$movAntigo['id_produto'],
+                (float)$movAntigo['quantidade'],
+                $movAntigo['tipo']
+            );
+
+            $stmtDelete = $pdo->prepare("
+                DELETE FROM movimento 
+                WHERE id_movimento = :id
+            ");
+            $stmtDelete->execute([':id' => $id]);
+        }
+
+        $pdo->commit();
+
+        header("Location: " . BASE_URL . "cadastros/movimentos.php");
+        exit;
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die("Erro ao excluir movimento: " . $e->getMessage());
+    }
+}
 
 /* =====================
-   GRUPOS
+   PRODUTOS PARA SELECT
 ===================== */
-$stmt = $pdo->query("SELECT codigo, descricao FROM produtos ORDER BY descricao");
+$stmt = $pdo->query("
+    SELECT id_produto, codigo, fornecedor, descricao, saldo
+    FROM produtos
+    ORDER BY descricao, fornecedor, codigo
+");
 $codigos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
-
 /* =====================
    EDITAR
 ===================== */
@@ -64,7 +208,11 @@ if (isset($_GET['edit'])) {
 
     $id = $_GET['edit'];
 
-    $stmt = $pdo->prepare("SELECT * FROM movimento WHERE id_movimento = :id");
+    $stmt = $pdo->prepare("
+        SELECT * 
+        FROM movimento 
+        WHERE id_movimento = :id
+    ");
     $stmt->bindParam(':id', $id);
     $stmt->execute();
 
@@ -74,9 +222,24 @@ if (isset($_GET['edit'])) {
 /* =====================
    LISTAR
 ===================== */
-$stmt = $pdo->query("SELECT m.id_movimento, m.data_movimento, m.documento, m.codigo, p.codigo as codigo_interno, p.descricao,
-m.quantidade, m.tipo FROM movimento as m inner join produtos as p on m.codigo = 
-p.codigo  ORDER BY m.data_movimento desc");
+$stmt = $pdo->query("
+    SELECT 
+        m.id_movimento,
+        m.data_movimento,
+        m.documento,
+        m.codigo,
+        m.quantidade,
+        m.tipo,
+        p.id_produto,
+        p.codigo AS codigo_nf,
+        p.fornecedor,
+        p.descricao,
+        p.saldo
+    FROM movimento AS m
+    INNER JOIN produtos AS p 
+        ON m.id_produto = p.id_produto
+    ORDER BY m.data_movimento DESC, m.id_movimento DESC
+");
 $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -84,16 +247,16 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="pt-br">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" charset="UTF-8">
-<title>Cadastro de Produtos</title>
-    <style>
-        body { font-family: Arial; margin: 20px; }
-        form { margin-bottom: 30px; }
-        input, select { margin: 6px 0; padding: 6px; width: 360px; display: block; }
-        table { border-collapse: collapse; width: 100%; }
-        a { margin-right: 10px; }
+<title>Movimentação de Estoque</title>
 
-    </style>
-
+<style>
+    body { font-family: Arial; margin: 20px; }
+    form { margin-bottom: 30px; }
+    input, select { margin: 6px 0; padding: 6px; width: 460px; display: block; max-width: 100%; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 6px; }
+    a { margin-right: 10px; }
+</style>
 
 </head>
 <body>
@@ -102,44 +265,51 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <form method="post">
 
-<input type="hidden" name="id" value="<?= $editar['id_movimento'] ?? '' ?>">
+<input type="hidden" name="id" value="<?= htmlspecialchars($editar['id_movimento'] ?? '') ?>">
 
 <label>Data de Lançamento</label>
-<input type="date"  name="data_movimento" required value="<?= htmlspecialchars($editar['data_movimento'] ?? '') ?>">
+<input type="date" name="data_movimento" required value="<?= htmlspecialchars($editar['data_movimento'] ?? date('Y-m-d')) ?>">
 
 <label>Documento</label>
 <input name="documento" required value="<?= htmlspecialchars($editar['documento'] ?? '') ?>">
 
-<label>Produtos</label>
-<select name="codigo">
+<label>Produto</label>
+<select name="id_produto" required>
+<option value="">Selecione...</option>
+
 <?php foreach ($codigos as $c): ?>
-<option value="<?= $c['codigo'] ?>"
-<?= (isset($editar['codigo']) && $editar['codigo'] == $c['codigo']) ? 'selected' : '' ?>>
-<?= htmlspecialchars($c['descricao']) ?>
+<option value="<?= $c['id_produto'] ?>"
+<?= (isset($editar['id_produto']) && $editar['id_produto'] == $c['id_produto']) ? 'selected' : '' ?>>
+<?= htmlspecialchars(
+    $c['descricao'] .
+    ' | Fornecedor: ' . $c['fornecedor'] .
+    ' | Cód. NF: ' . $c['codigo'] .
+    ' | Saldo: ' . number_format((float)$c['saldo'], 4, ',', '.')
+) ?>
 </option>
 <?php endforeach; ?>
+
 </select>
 
 <label>Quantidade</label>
 <input type="number" step="0.0001" name="quantidade" required value="<?= htmlspecialchars($editar['quantidade'] ?? '') ?>">
 
 <label>Tipo de Lançamento</label>
-<select name="tipo">
-<?php
+<select name="tipo" required>
+<option value="">Selecione...</option>
 
-foreach (['Entrada','Saída','Retorno'] as $tp):
-?>
+<?php foreach (['Entrada', 'Saída', 'Retorno'] as $tp): ?>
 <option value="<?= $tp ?>" <?= (isset($editar['tipo']) && $editar['tipo'] == $tp) ? 'selected' : '' ?>>
     <?= $tp ?>
 </option>
 <?php endforeach; ?>
-</select>
 
+</select>
 
 <button type="submit"><?= $editar ? 'Atualizar' : 'Salvar' ?></button>
 
 <?php if ($editar): ?>
-    <a href="produtos.php">Cancelar</a>
+    <a href="movimentos.php">Cancelar</a>
 <?php endif; ?>
 
 </form>
@@ -150,11 +320,13 @@ foreach (['Entrada','Saída','Retorno'] as $tp):
 <tr>
     <th>Data Movimento</th>
     <th>Documento</th>
-    <th>Código Fornecedor</th>
-    <th>Código Interno</th>
+    <th>ID Produto</th>
+    <th>Código NF</th>
+    <th>Fornecedor</th>
     <th>Produto</th>
     <th>Quantidade</th>
     <th>Movimento</th>
+    <th>Saldo Atual</th>
     <th>Ações</th>
 </tr>
 
@@ -162,13 +334,19 @@ foreach (['Entrada','Saída','Retorno'] as $tp):
 <tr>
     <td><?= htmlspecialchars($e['data_movimento']) ?></td>
     <td><?= htmlspecialchars($e['documento']) ?></td>
-    <td><?= htmlspecialchars($e['codigo']) ?></td>
-    <td><?= htmlspecialchars($e['codigo_interno']) ?></td>
+    <td><?= htmlspecialchars($e['id_produto']) ?></td>
+    <td><?= htmlspecialchars($e['codigo_nf']) ?></td>
+    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
-    <td><?= htmlspecialchars($e['quantidade']) ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['quantidade'], 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['tipo']) ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
     <td>
         <a href="movimentos.php?edit=<?= $e['id_movimento'] ?>">Editar</a>
+        <a href="movimentos.php?delete=<?= $e['id_movimento'] ?>"
+           onclick="return confirm('Deseja excluir este lançamento? O saldo do produto será ajustado.')">
+           Excluir
+        </a>
     </td>
 </tr>
 <?php endforeach; ?>
@@ -177,4 +355,3 @@ foreach (['Entrada','Saída','Retorno'] as $tp):
 
 </body>
 </html>
-

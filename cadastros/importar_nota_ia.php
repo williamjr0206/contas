@@ -11,9 +11,35 @@ require __DIR__ . '/../includes/menu.php';
 
 $resultado = null;
 $erro = null;
-
 $mensagem_sucesso = null;
 
+/* =====================
+   NORMALIZAR DESCRIÇÃO
+===================== */
+function normalizarDescricaoProduto($texto)
+{
+    $texto = mb_strtoupper(trim($texto), 'UTF-8');
+    $texto = iconv('UTF-8', 'ASCII//TRANSLIT', $texto);
+    $texto = preg_replace('/[^A-Z0-9]/', '', $texto);
+
+    if (strpos($texto, 'PAOFRANCES') !== false || strpos($texto, 'FRANCES') !== false) {
+        return 'PAOFRANCES';
+    }
+
+    if (strpos($texto, 'PAODEQUEIJO') !== false || strpos($texto, 'QUEIJO') !== false) {
+        return 'PAODEQUEIJO';
+    }
+
+    if (strpos($texto, 'BISCO') !== false) {
+        return 'BISCOITAO';
+    }
+
+    return trim($texto);
+}
+
+/* =====================
+   IMPORTAR PRODUTOS
+===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos'])) {
 
     $json_produtos = $_POST['json_produtos'] ?? '';
@@ -29,6 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
             $documento = $dados['documento_numero'] ?? '';
             $data_movimento = $dados['data_lancamento'] ?? date('Y-m-d');
 
+            if ($data_movimento === '') {
+                $data_movimento = date('Y-m-d');
+            }
+
             $produtos_processados = [];
 
             foreach ($dados['produtos'] as $p) {
@@ -36,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                 $codigo = trim((string)($p['codigo'] ?? ''));
                 $fornecedor = trim((string)($p['fornecedor'] ?? ''));
                 $descricao = trim((string)($p['descricao'] ?? ''));
+                $descricao_normalizada = normalizarDescricaoProduto($descricao);
                 $preco = round((float)($p['preco'] ?? 0), 2);
                 $unidade = trim((string)($p['unidade'] ?? 'UN'));
                 $quantidade = (float)($p['quantidade'] ?? 0);
@@ -49,8 +80,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                     $fornecedor = 'Fornecedor não identificado';
                 }
 
-                // Evita duplicar o mesmo produto dentro da mesma nota
-                $chave = strtoupper($fornecedor . '|' . $descricao . '|' . $unidade);
+                if ($unidade === '') {
+                    $unidade = 'UN';
+                }
+
+                if ($quantidade <= 0) {
+                    $quantidade = 1;
+                }
+
+                if (!in_array($tipo_movimento, ['Entrada', 'Saída', 'Retorno'])) {
+                    $tipo_movimento = 'Entrada';
+                }
+
+                if ($codigo === '' || $codigo === '2147483647' || strlen($codigo) > 150) {
+                    $codigo = strtoupper(substr(md5($fornecedor . $descricao . $unidade), 0, 12));
+                }
+
+                $chave = strtoupper($fornecedor . '|' . $descricao_normalizada);
 
                 if (isset($produtos_processados[$chave])) {
                     continue;
@@ -58,36 +104,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
 
                 $produtos_processados[$chave] = true;
 
-                // Corrige código vazio ou código inválido gerado pela IA
-                if (
-                    $codigo === '' ||
-                    $codigo === '2147483647' ||
-                    strlen($codigo) > 150
-                ) {
-                    $codigo = strtoupper(substr(md5($fornecedor . $descricao . $unidade), 0, 12));
-                }
-
-                if ($quantidade <= 0) {
-                    $quantidade = 1;
-                }
-
-                // Procura produto pelo código + fornecedor
+                /*
+                   1. PRIMEIRO procura por descrição normalizada + fornecedor.
+                   Não usa unidade, porque a IA pode ler UN, KG, CX errado.
+                */
                 $stmt = $pdo->prepare("
-                    SELECT * FROM produtos 
-                    WHERE codigo = :codigo 
-                    AND fornecedor = :fornecedor 
+                    SELECT *
+                    FROM produtos
+                    WHERE descricao_normalizada = :descricao_normalizada
+                    AND fornecedor = :fornecedor
                     LIMIT 1
                 ");
 
                 $stmt->execute([
-                    ':codigo' => $codigo,
+                    ':descricao_normalizada' => $descricao_normalizada,
                     ':fornecedor' => $fornecedor
                 ]);
 
                 $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
+                /*
+                   2. Se não encontrou, procura por código + fornecedor.
+                */
+                if (!$produto) {
+                    $stmt = $pdo->prepare("
+                        SELECT *
+                        FROM produtos
+                        WHERE codigo = :codigo
+                        AND fornecedor = :fornecedor
+                        LIMIT 1
+                    ");
+
+                    $stmt->execute([
+                        ':codigo' => $codigo,
+                        ':fornecedor' => $fornecedor
+                    ]);
+
+                    $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+
                 if ($produto) {
 
+                    $id_produto = (int)$produto['id_produto'];
                     $novo_saldo = (float)$produto['saldo'];
 
                     if ($tipo_movimento === 'Entrada' || $tipo_movimento === 'Retorno') {
@@ -97,8 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                     }
 
                     $stmtUpdate = $pdo->prepare("
-                        UPDATE produtos 
+                        UPDATE produtos
                         SET descricao = :descricao,
+                            descricao_normalizada = :descricao_normalizada,
                             preco = :preco,
                             unidade = :unidade,
                             saldo = :saldo
@@ -107,10 +166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
 
                     $stmtUpdate->execute([
                         ':descricao' => $descricao,
+                        ':descricao_normalizada' => $descricao_normalizada,
                         ':preco' => $preco,
                         ':unidade' => $unidade,
                         ':saldo' => $novo_saldo,
-                        ':id_produto' => $produto['id_produto']
+                        ':id_produto' => $id_produto
                     ]);
 
                 } else {
@@ -124,34 +184,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                     }
 
                     $stmtInsert = $pdo->prepare("
-                        INSERT INTO produtos 
-                            (codigo, fornecedor, descricao, preco, unidade, saldo, cadastrado_em)
+                        INSERT INTO produtos
+                        (
+                            codigo,
+                            fornecedor,
+                            descricao,
+                            descricao_normalizada,
+                            preco,
+                            unidade,
+                            saldo,
+                            cadastrado_em
+                        )
                         VALUES
-                            (:codigo, :fornecedor, :descricao, :preco, :unidade, :saldo, :cadastrado_em)
+                        (
+                            :codigo,
+                            :fornecedor,
+                            :descricao,
+                            :descricao_normalizada,
+                            :preco,
+                            :unidade,
+                            :saldo,
+                            :cadastrado_em
+                        )
                     ");
 
                     $stmtInsert->execute([
                         ':codigo' => $codigo,
                         ':fornecedor' => $fornecedor,
                         ':descricao' => $descricao,
+                        ':descricao_normalizada' => $descricao_normalizada,
                         ':preco' => $preco,
                         ':unidade' => $unidade,
                         ':saldo' => $saldo_inicial,
                         ':cadastrado_em' => date('Y-m-d')
                     ]);
+
+                    $id_produto = (int)$pdo->lastInsertId();
                 }
 
-                // Grava movimento depois de garantir que o produto existe
                 $stmtMov = $pdo->prepare("
-                    INSERT INTO movimento 
-                        (data_movimento, documento, codigo, quantidade, tipo)
+                    INSERT INTO movimento
+                    (
+                        data_movimento,
+                        documento,
+                        id_produto,
+                        codigo,
+                        quantidade,
+                        tipo
+                    )
                     VALUES
-                        (:data_movimento, :documento, :codigo, :quantidade, :tipo)
+                    (
+                        :data_movimento,
+                        :documento,
+                        :id_produto,
+                        :codigo,
+                        :quantidade,
+                        :tipo
+                    )
                 ");
 
                 $stmtMov->execute([
                     ':data_movimento' => $data_movimento,
                     ':documento' => $documento,
+                    ':id_produto' => $id_produto,
                     ':codigo' => $codigo,
                     ':quantidade' => $quantidade,
                     ':tipo' => $tipo_movimento
@@ -167,6 +262,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
         }
     }
 }
+
+/* =====================
+   LEITURA IA
+===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem'])) {
 
     if ($_FILES['imagem']['error'] !== UPLOAD_ERR_OK) {
@@ -184,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem'])) {
                 "content" => [
                     [
                         "type" => "input_text",
-                        "text" => "Leia esta nota fiscal ou comprovante e devolva SOMENTE um JSON válido, sem markdown, sem ```json, com esta estrutura:
+                        "text" => "Leia esta nota fiscal, cupom ou comprovante e devolva SOMENTE um JSON válido, sem markdown, sem ```json, com esta estrutura:
 
 {
   \"documento_numero\": \"\",
@@ -212,20 +311,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem'])) {
 
 Regras:
 - Use datas no formato YYYY-MM-DD.
-- Para compras pagas, use tipo=Pagar e status=Pago.
-- fornecedor deve ser o nome do estabelecimento emitente da nota.
+- Se a data estiver ilegível ou duvidosa, deixe data_lancamento vazio.
+- Nunca invente ano.
+- Se não tiver certeza da data, deixe vazio.
+- fornecedor deve ser o nome do estabelecimento emitente.
+- descricao geral deve resumir a nota, exemplo: Compra Padaria Macaúbas.
+- tipo deve ser Pagar.
+- status deve ser Pago quando houver pagamento na nota.
+- forma_de_pagamento_recebimento deve ser Pix, Dinheiro, Cartão Débito, Cartão Crédito ou outra forma encontrada.
+- valor_nominal deve ser o total da nota.
+- valor_pago deve ser o valor pago.
+- data_pagamento deve ser a data da nota quando estiver pago; se a data estiver duvidosa, deixe vazio.
+- data_vencimento pode ser igual à data da nota quando estiver pago; se a data estiver duvidosa, deixe vazio.
 - produtos deve conter os itens identificados na nota.
-- codigo deve ser o código do produto, se aparecer.
+- codigo deve ser o código do produto somente se estiver claro.
+- se o código do produto não estiver claro, deixe codigo vazio.
+- não invente código de produto.
 - unidade deve ser UN, KG, LT, CX, PC ou outra unidade encontrada.
 - quantidade deve ser a quantidade comprada.
-- preco deve ser o preço unitário quando possível; se só existir total do item, use esse valor.
+- preco deve ser o preço unitário quando possível.
 - tipo_movimento deve ser Entrada.
-- Se não souber algum campo, deixe vazio ou zero.
-- Nunca use o mesmo código para produtos diferentes.
-- Se o código do produto não estiver claro, deixe codigo vazio.
-- Não invente código numérico grande.
-- Não repita produtos iguais.
-- Cada item da nota deve aparecer apenas uma vez."
+- não repita produtos iguais.
+- cada item da nota deve aparecer apenas uma vez."
                     ],
                     [
                         "type" => "input_image",
@@ -236,6 +343,7 @@ Regras:
         ];
 
         $ch = curl_init("https://api.openai.com/v1/responses");
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
@@ -261,7 +369,6 @@ Regras:
 
                 $texto = $json['output'][0]['content'][0]['text'] ?? '';
 
-                // 🔥 CORREÇÃO DO PROBLEMA DO ```json
                 $texto = trim($texto);
                 $texto = preg_replace('/^```json\s*/i', '', $texto);
                 $texto = preg_replace('/^```\s*/', '', $texto);
@@ -270,13 +377,33 @@ Regras:
                 $resultado = json_decode($texto, true);
 
                 if (!$resultado) {
-                    $erro = "A IA respondeu, mas não consegui converter para JSON.<br><br><b>Resposta:</b><br>" . htmlspecialchars($texto);
+                    $erro = "A IA respondeu mas não consegui converter o JSON.<br><br>" . htmlspecialchars($texto);
                 }
             }
         }
 
         curl_close($ch);
     }
+}
+
+/* =====================
+   QUERY PARA LANÇAMENTOS
+===================== */
+$query = '';
+
+if ($resultado) {
+    $query = http_build_query([
+        'documento_numero' => $resultado['documento_numero'] ?? '',
+        'data_lancamento' => $resultado['data_lancamento'] ?? '',
+        'descricao' => $resultado['descricao'] ?? '',
+        'tipo' => $resultado['tipo'] ?? '',
+        'data_vencimento' => $resultado['data_vencimento'] ?? '',
+        'valor_nominal' => $resultado['valor_nominal'] ?? '',
+        'data_pagamento' => $resultado['data_pagamento'] ?? '',
+        'valor_pago' => $resultado['valor_pago'] ?? '',
+        'status' => $resultado['status'] ?? '',
+        'forma_de_pagamento_recebimento' => $resultado['forma_de_pagamento_recebimento'] ?? ''
+    ]);
 }
 ?>
 
@@ -287,12 +414,51 @@ Regras:
 <title>Importar Nota com IA</title>
 
 <style>
-body { font-family: Arial; margin: 20px; }
-input, button { padding: 8px; margin: 8px 0; display: block; }
-.caixa { border: 1px solid #ccc; padding: 15px; margin-top: 20px; max-width: 700px; }
-.erro { color: red; font-weight: bold; }
-pre { background: #f4f4f4; padding: 10px; }
-button { cursor: pointer; }
+body {
+    font-family: Arial;
+    margin: 20px;
+}
+
+input,
+button {
+    padding: 8px;
+    margin: 8px 0;
+    display: block;
+}
+
+.caixa {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-top: 20px;
+    max-width: 950px;
+}
+
+.erro {
+    color: red;
+    font-weight: bold;
+}
+
+.sucesso {
+    color: green;
+    font-weight: bold;
+}
+
+pre {
+    background: #f4f4f4;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+}
+
+th,
+td {
+    padding: 6px;
+}
 </style>
 </head>
 
@@ -309,91 +475,88 @@ button { cursor: pointer; }
 <?php if ($erro): ?>
     <div class="erro"><?= $erro ?></div>
 <?php endif; ?>
-<?php if (!empty($mensagem_sucesso)): ?>
-    <div style="color: green; font-weight: bold; margin-top:10px;">
-        <?= $mensagem_sucesso ?>
-    </div>
+
+<?php if ($mensagem_sucesso): ?>
+    <div class="sucesso"><?= $mensagem_sucesso ?></div>
 <?php endif; ?>
 
 <?php if ($resultado): ?>
 
-<?php
-$query = http_build_query([
-    'documento_numero' => $resultado['documento_numero'] ?? '',
-    'data_lancamento' => $resultado['data_lancamento'] ?? '',
-    'descricao' => $resultado['descricao'] ?? '',
-    'tipo' => $resultado['tipo'] ?? '',
-    'data_vencimento' => $resultado['data_vencimento'] ?? '',
-    'valor_nominal' => $resultado['valor_nominal'] ?? '',
-    'data_pagamento' => $resultado['data_pagamento'] ?? '',
-    'valor_pago' => $resultado['valor_pago'] ?? '',
-    'status' => $resultado['status'] ?? '',
-    'forma_de_pagamento_recebimento' => $resultado['forma_de_pagamento_recebimento'] ?? ''
-]);
-?>
-
 <div class="caixa">
-    <h3>Dados sugeridos pela IA</h3>
+
+<h3>Dados da nota encontrados pela IA</h3>
+
+<table border="1">
+<tr>
+    <th>Campo</th>
+    <th>Valor</th>
+</tr>
 
 <?php foreach ($resultado as $campo => $valor): ?>
+    <?php if ($campo !== 'produtos'): ?>
+        <tr>
+            <td><?= htmlspecialchars($campo) ?></td>
+            <td><?= htmlspecialchars(is_array($valor) ? json_encode($valor, JSON_UNESCAPED_UNICODE) : (string)$valor) ?></td>
+        </tr>
+    <?php endif; ?>
+<?php endforeach; ?>
 
-    <?php if ($campo === 'produtos' && is_array($valor)): ?>
+</table>
 
-        <h3>Produtos encontrados</h3>
+<h3>Produtos encontrados</h3>
 
-        <table border="1" cellpadding="6" cellspacing="0">
-            <tr>
-                <th>Código</th>
-                <th>Fornecedor</th>
-                <th>Descrição</th>
-                <th>Preço</th>
-                <th>Unidade</th>
-                <th>Quantidade</th>
-                <th>Movimento</th>
-            </tr>
+<table border="1">
+<tr>
+    <th>Código</th>
+    <th>Fornecedor</th>
+    <th>Descrição</th>
+    <th>Preço</th>
+    <th>UN</th>
+    <th>Qtd</th>
+    <th>Movimento</th>
+</tr>
 
-            <?php foreach ($valor as $produto): ?>
-                <tr>
-                    <td><?= htmlspecialchars($produto['codigo'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($produto['fornecedor'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($produto['descricao'] ?? '') ?></td>
-                    <td><?= htmlspecialchars((string)($produto['preco'] ?? '')) ?></td>
-                    <td><?= htmlspecialchars($produto['unidade'] ?? '') ?></td>
-                    <td><?= htmlspecialchars((string)($produto['quantidade'] ?? '')) ?></td>
-                    <td><?= htmlspecialchars($produto['tipo_movimento'] ?? '') ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
-        </table>
+<?php foreach (($resultado['produtos'] ?? []) as $produto): ?>
+<tr>
+    <td><?= htmlspecialchars($produto['codigo'] ?? '') ?></td>
+    <td><?= htmlspecialchars($produto['fornecedor'] ?? '') ?></td>
+    <td><?= htmlspecialchars($produto['descricao'] ?? '') ?></td>
+    <td><?= htmlspecialchars((string)($produto['preco'] ?? '')) ?></td>
+    <td><?= htmlspecialchars($produto['unidade'] ?? '') ?></td>
+    <td><?= htmlspecialchars((string)($produto['quantidade'] ?? '')) ?></td>
+    <td><?= htmlspecialchars($produto['tipo_movimento'] ?? '') ?></td>
+</tr>
+<?php endforeach; ?>
+
+</table>
 
 <form method="post">
-    <input type="hidden" name="json_produtos"
-    value="<?= htmlspecialchars(json_encode($resultado, JSON_UNESCAPED_UNICODE)) ?>">
+    <input
+        type="hidden"
+        name="json_produtos"
+        value="<?= htmlspecialchars(json_encode($resultado, JSON_UNESCAPED_UNICODE)) ?>"
+    >
 
     <button type="submit" name="importar_produtos" value="1">
         Importar Produtos para Estoque
     </button>
 </form>
 
-    <?php else: ?>
+<br>
 
-        <p>
-            <strong><?= htmlspecialchars($campo) ?>:</strong>
-            <?= htmlspecialchars(is_array($valor) ? json_encode($valor, JSON_UNESCAPED_UNICODE) : (string)$valor) ?>
-        </p>
+<a href="<?= BASE_URL ?>cadastros/lancamentos.php?<?= $query ?>">
+    <button type="button">
+        Preencher Lançamento Automaticamente
+    </button>
+</a>
 
-    <?php endif; ?>
+<h3>JSON bruto</h3>
 
-<?php endforeach; ?>
-    <br>
-    
+<pre><?= htmlspecialchars(json_encode(
+    $resultado,
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+)) ?></pre>
 
-    <a href="<?= BASE_URL ?>cadastros/lancamentos.php?<?= $query ?>">
-        <button type="button">Preencher Lançamento Automaticamente</button>
-    </a>
-
-    <h3>JSON bruto</h3>
-    <pre><?= htmlspecialchars(json_encode($resultado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
 </div>
 
 <?php endif; ?>

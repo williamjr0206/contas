@@ -8,44 +8,60 @@ require_once __DIR__ . '/../config/auth.php';
 verificaAcesso();
 
 require __DIR__ . '/../includes/menu.php';
+
+function normalizarDescricaoProduto($texto)
+{
+    $texto = mb_strtoupper(trim($texto), 'UTF-8');
+    $texto = iconv('UTF-8', 'ASCII//TRANSLIT', $texto);
+    $texto = preg_replace('/[^A-Z0-9]/', '', $texto);
+    return $texto;
+}
+
 /* =====================
    SALVAR / EDITAR
 ===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $id        = $_POST['id'] ?? null;
+    $id = $_POST['id'] ?? null;
     $codigo = $_POST['codigo'] ?? '';
     $fornecedor = $_POST['fornecedor'] ?? '';
     $descricao = $_POST['descricao'] ?? '';
-    $preco = $_POST['preco'] ?? '';
+    $preco = $_POST['preco'] ?? 0;
     $unidade = $_POST['unidade'] ?? '';
-    $saldo = $_POST['saldo'] ?? '';
-    $cadastrado_em = $_POST['cadastrado_em'] ?? '';
+    $saldo = $_POST['saldo'] ?? 0;
+    $cadastrado_em = $_POST['cadastrado_em'] ?? date('Y-m-d');
+    $descricao_normalizada = normalizarDescricaoProduto($descricao);
 
     if ($id) {
         $sql = "UPDATE produtos 
-                SET codigo = :codigo, fornecedor = :fornecedor, descricao = :descricao, preco = :preco,
-                    unidade = :unidade, saldo = :saldo, cadastrado_em = :cadastrado_em
-                WHERE id_produto = :id";
+        SET codigo = :codigo,
+            fornecedor = :fornecedor,
+            descricao = :descricao,
+            preco = :preco,
+            unidade = :unidade,
+            saldo = :saldo,
+            cadastrado_em = :cadastrado_em,
+            descricao_normalizada = :descricao_normalizada
+        WHERE id_produto = :id";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':id', $id);
     } else {
-        $sql = "INSERT INTO produtos (codigo, fornecedor, descricao, preco, unidade, saldo,
-                                    cadastrado_em)
-                VALUES (:codigo, :fornecedor, :descricao, :preco, :unidade, :saldo,
-                        :cadastrado_em)";
-
+        $sql = "INSERT INTO produtos 
+        (codigo, fornecedor, descricao, preco, unidade, saldo, cadastrado_em, descricao_normalizada)
+        VALUES 
+        (:codigo, :fornecedor, :descricao, :preco, :unidade, :saldo, :cadastrado_em, :descricao_normalizada)";
         $stmt = $pdo->prepare($sql);
     }
 
     $stmt->bindParam(':codigo', $codigo);
-    $stmt->bindParam(':fornecedor',$fornecedor);
+    $stmt->bindParam(':fornecedor', $fornecedor);
     $stmt->bindParam(':descricao', $descricao);
     $stmt->bindParam(':preco', $preco);
     $stmt->bindParam(':unidade', $unidade);
     $stmt->bindParam(':saldo', $saldo);
     $stmt->bindParam(':cadastrado_em', $cadastrado_em);
+    $stmt->bindParam(':descricao_normalizada', $descricao_normalizada);
     $stmt->execute();
 
     header("Location: " . BASE_URL . "cadastros/produtos.php");
@@ -58,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['delete'])) {
 
     $id = $_GET['delete'];
-
 
     $sql = "DELETE FROM produtos WHERE id_produto = :id";
     $stmt = $pdo->prepare($sql);
@@ -88,7 +103,11 @@ if (isset($_GET['edit'])) {
 /* =====================
    LISTAR
 ===================== */
-$stmt = $pdo->query("SELECT * FROM produtos ORDER BY descricao");
+$stmt = $pdo->query("
+    SELECT * 
+    FROM produtos 
+    ORDER BY descricao, fornecedor, codigo
+");
 $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -97,15 +116,15 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" charset="UTF-8">
 <title>Cadastro de Produtos</title>
-    <style>
-        body { font-family: Arial; margin: 20px; }
-        form { margin-bottom: 30px; }
-        input, select { margin: 6px 0; padding: 6px; width: 360px; display: block; }
-        table { border-collapse: collapse; width: 100%; }
-        a { margin-right: 10px; }
 
-    </style>
-
+<style>
+    body { font-family: Arial; margin: 20px; }
+    form { margin-bottom: 30px; }
+    input, select { margin: 6px 0; padding: 6px; width: 360px; display: block; max-width: 100%; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 6px; }
+    a { margin-right: 10px; }
+</style>
 
 </head>
 <body>
@@ -114,9 +133,9 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <form method="post">
 
-<input type="hidden" name="id" value="<?= $editar['id_produto'] ?? '' ?>">
+<input type="hidden" name="id" value="<?= htmlspecialchars($editar['id_produto'] ?? '') ?>">
 
-<label>Código do Produto</label>
+<label>Código do Produto na NF / Fornecedor</label>
 <input name="codigo" required value="<?= htmlspecialchars($editar['codigo'] ?? '') ?>">
 
 <label>Fornecedor</label>
@@ -132,11 +151,10 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <input name="unidade" required value="<?= htmlspecialchars($editar['unidade'] ?? '') ?>">
 
 <label>Saldo</label>
-<input type="number" name="saldo" step="0.0001" required value="<?= htmlspecialchars($editar['saldo'] ?? '') ?>">
+<input type="number" name="saldo" step="0.0001" required value="<?= htmlspecialchars($editar['saldo'] ?? 0) ?>">
 
 <label>Cadastrado em</label>
-<input type="date" name="cadastrado_em" required value="<?= htmlspecialchars($editar['cadastrado_em'] ?? '') ?>">
-
+<input type="date" name="cadastrado_em" required value="<?= htmlspecialchars($editar['cadastrado_em'] ?? date('Y-m-d')) ?>">
 
 <button type="submit"><?= $editar ? 'Atualizar' : 'Salvar' ?></button>
 
@@ -150,10 +168,11 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <table border="1">
 <tr>
-    <th>Código</th>
+    <th>ID</th>
+    <th>Código NF</th>
     <th>Fornecedor</th>
     <th>Descrição</th>
-    <th>Preço / Custo em R$</th>
+    <th>Preço / Custo R$</th>
     <th>Unidade</th>
     <th>Saldo</th>
     <th>Ações</th>
@@ -161,16 +180,17 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php foreach ($eventos as $e): ?>
 <tr>
+    <td><?= htmlspecialchars($e['id_produto']) ?></td>
     <td><?= htmlspecialchars($e['codigo']) ?></td>
     <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
-    <td><?= htmlspecialchars($e['preco']) ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['preco'], 2, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['unidade']) ?></td>
-    <td><?= htmlspecialchars($e['saldo']) ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
     <td>
         <a href="produtos.php?edit=<?= $e['id_produto'] ?>">Editar</a>
         <a href="produtos.php?delete=<?= $e['id_produto'] ?>"
-           onclick="return confirm('Deseja excluir este Produto ?')">
+           onclick="return confirm('Deseja excluir este Produto?')">
            Excluir
         </a>
     </td>
