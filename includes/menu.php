@@ -9,21 +9,20 @@ $baseUrl = BASE_URL;
 
 $menu = [
     'Cadastros' => [
-        ['chave' => 'usuarios',    'titulo' => 'Usuários',         'link' => $baseUrl . 'cadastros/usuarios.php'],
-        ['chave' => 'lancamentos',  'titulo' => 'Lançamentos',       'link' => $baseUrl . 'cadastros/lancamentos.php'],
-        ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos',   'link'  => $baseUrl . 'cadastros/grupos.php'],
-        ['chave' => 'nota_fiscal', 'titulo' => 'Importar Nota Fiscal',   'link'  => $baseUrl . 'cadastros/importar_nota_ia.php'],
-        ['chave' => 'produto', 'titulo' => 'Produtos',   'link'  => $baseUrl . 'cadastros/produtos.php'],
-        ['chave' => 'movimento', 'titulo' => 'Lançamentos Estoque',   'link'  => $baseUrl . 'cadastros/movimentos.php'],  
+        ['chave' => 'usuarios', 'titulo' => 'Usuários', 'link' => $baseUrl . 'cadastros/usuarios.php'],
+        ['chave' => 'lancamentos', 'titulo' => 'Lançamentos', 'link' => $baseUrl . 'cadastros/lancamentos.php'],
+        ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos', 'link' => $baseUrl . 'cadastros/grupos.php'],
+        ['chave' => 'nota_fiscal', 'titulo' => 'Importar Nota Fiscal', 'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
+        ['chave' => 'produto', 'titulo' => 'Produtos', 'link' => $baseUrl . 'cadastros/produtos.php'],
+        ['chave' => 'movimento', 'titulo' => 'Lançamentos Estoque', 'link' => $baseUrl . 'cadastros/movimentos.php'],
     ],
 
-
-
     'Relatórios' => [
-        ['chave' => 'relatorio_financeiro',         'titulo' => 'Relatório Finânceiro',    'link' => $baseUrl . 'relatorios/relatorio_financeiro.php'],
-        ['chave' => 'fluxo_caixa',         'titulo' => 'Relatório de Fluxo de Caixa',    'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
-        ['chave' => 'compromissos_pagar',         'titulo' => 'Compromissos a Pagar',    'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
-        ['chave' => 'relatorio_financeiro',         'titulo' => 'Prestação de Contas',    'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
+        ['chave' => 'relatorio_financeiro', 'titulo' => 'Relatório Finânceiro', 'link' => $baseUrl . 'relatorios/relatorio_financeiro.php'],
+        ['chave' => 'fluxo_caixa', 'titulo' => 'Relatório de Fluxo de Caixa', 'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
+        ['chave' => 'compromissos_pagar', 'titulo' => 'Compromissos a Pagar', 'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
+        ['chave' => 'relatorio_financeiro', 'titulo' => 'Prestação de Contas', 'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
+        ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
     ],
 
     'Sessão' => [
@@ -127,7 +126,7 @@ $menu = [
 </style>
 
 <div class="topo-sistema">
-    <div class="titulo">IPI Muzambinho - Sistema Interno</div>
+    <div class="titulo">Sistemas - Pagar/Receber/Estoques - SZJW</div>
     <div class="usuario">
         <?= htmlspecialchars(nomeUsuarioAtual()) ?> - Perfil: <strong><?= htmlspecialchars(perfilAtual()) ?></strong>
     </div>

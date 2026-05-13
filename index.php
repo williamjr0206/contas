@@ -11,13 +11,14 @@ $baseUrl = BASE_URL;
 $perfil = perfilAtual();
 
 $cards = [
-    ['chave' => 'relatorio_financeiro',     'titulo' => 'Relatório Finânceiro',         'texto' => 'Relatório Finânceiro.',                                         'link' => $baseUrl . 'relatorios/relatorio_financeiro.php'],
-    ['chave' => 'fluxo_caixa',     'titulo' => 'Fluxo de Caixa',                                   'texto' => 'Relatório de Fluxo de Caixa.',                  'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
-    ['chave' => 'compromissos_pagar',     'titulo' => 'Compromissos a Pagar',                                   'texto' => 'Compromissos a Pagar.',                  'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
-    ['chave' => 'relatorio_financeiro',     'titulo' => 'Prestação de Contas',                                   'texto' => 'Prestação de Contas.',                  'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
-    ['chave' => 'nota_fiscal',     'titulo' => 'Importações de Notas Fiscais',                                   'texto' => 'Importação de Notas.',                  'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
-    ['chave' => 'produto',     'titulo' => 'Cadastro de Produtos',                                   'texto' => 'Produtos.',                  'link' => $baseUrl . 'cadastros/produtos.php'],
-    ['chave' => 'movimento',     'titulo' => 'Lançamentos de Estoque',                                   'texto' => 'Lançamentos Estoque.',                  'link' => $baseUrl . 'cadastros/movimentos.php'],
+    ['chave' => 'relatorio_financeiro', 'titulo' => 'Relatório Finânceiro', 'texto' => 'Relatório Finânceiro.', 'link' => $baseUrl . 'relatorios/relatorio_financeiro.php'],
+    ['chave' => 'fluxo_caixa', 'titulo' => 'Fluxo de Caixa', 'texto' => 'Relatório de Fluxo de Caixa.', 'link' => $baseUrl . 'relatorios/fluxo_caixa.php'],
+    ['chave' => 'compromissos_pagar', 'titulo' => 'Compromissos a Pagar', 'texto' => 'Compromissos a Pagar.', 'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
+    ['chave' => 'relatorio_financeiro', 'titulo' => 'Prestação de Contas', 'texto' => 'Prestação de Contas.', 'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
+    ['chave' => 'nota_fiscal', 'titulo' => 'Importações de Notas Fiscais', 'texto' => 'Importação de Notas.', 'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
+    ['chave' => 'produto', 'titulo' => 'Cadastro de Produtos', 'texto' => 'Produtos.', 'link' => $baseUrl . 'cadastros/produtos.php'],
+    ['chave' => 'movimento', 'titulo' => 'Lançamentos de Estoque', 'texto' => 'Lançamentos Estoque.', 'link' => $baseUrl . 'cadastros/movimentos.php'],
+    ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'texto' => 'Relatório de estoque com saldo, preço e valor total.', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
 ];
 ?>
 <!DOCTYPE html>

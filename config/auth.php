@@ -131,7 +131,7 @@ function temPermissao(string $chave): bool
             'professores',
             'produto',
             'movimento',
-            
+            'estoque_produtos',
 
             /* 🔐 ATAS - SOMENTE ADMIN */
             'atas',
