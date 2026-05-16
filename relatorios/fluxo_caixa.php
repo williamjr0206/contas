@@ -9,25 +9,46 @@ require __DIR__ . '/../includes/menu.php';
 
 $data_inicio = $_GET['inicio'] ?? date('Y-m-01');
 $data_fim    = $_GET['fim'] ?? date('Y-m-t');
+$id_autor    = $_GET['id_autor'] ?? '';
 
 $params = [
     ':inicio' => $data_inicio,
     ':fim'    => $data_fim
 ];
 
+$where = [
+    "l.data_vencimento BETWEEN :inicio AND :fim"
+];
+
+if ($id_autor !== '') {
+    $where[] = "l.id_autor = :id_autor";
+    $params[':id_autor'] = $id_autor;
+}
+
+$whereSQL = "WHERE " . implode(" AND ", $where);
+
+/* =====================
+   AUTORES
+===================== */
+$stmt = $pdo->query("SELECT id_autor, nome FROM autores ORDER BY nome");
+$autores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 $sql = "SELECT 
-            documento_numero,
-            descricao,
-            tipo,
-            valor_nominal,
-            valor_pago,
-            data_lancamento,
-            data_vencimento,
-            data_pagamento,
-            status
-        FROM lancamentos
-        WHERE data_vencimento BETWEEN :inicio AND :fim
-        ORDER BY data_vencimento ASC, descricao ASC";
+            l.documento_numero,
+            l.descricao,
+            l.tipo,
+            l.valor_nominal,
+            l.valor_pago,
+            l.data_lancamento,
+            l.data_vencimento,
+            l.data_pagamento,
+            l.status,
+            l.id_autor,
+            a.nome AS autor_nome
+        FROM lancamentos l
+        LEFT JOIN autores a ON a.id_autor = l.id_autor
+        $whereSQL
+        ORDER BY l.data_vencimento ASC, l.descricao ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -55,7 +76,7 @@ function moedaBR($valor) {
 <style>
 body { font-family: Arial; margin: 20px; background: #f4f6f8; }
 form { background: #fff; padding: 15px; border: 1px solid #ddd; margin-bottom: 20px; }
-input, button { padding: 7px; margin: 5px; }
+input, select, button { padding: 7px; margin: 5px; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px; border: 1px solid #ccc; }
 th { background: #2c3e50; color: white; }
@@ -77,6 +98,16 @@ th { background: #2c3e50; color: white; }
     <label>Data Final</label>
     <input type="date" name="fim" value="<?= htmlspecialchars($data_fim) ?>" required>
 
+    <label>Autor / Favorecido</label>
+    <select name="id_autor">
+        <option value="">Todos</option>
+        <?php foreach ($autores as $autor): ?>
+            <option value="<?= $autor['id_autor'] ?>" <?= $id_autor == $autor['id_autor'] ? 'selected' : '' ?>>
+                <?= htmlspecialchars($autor['nome']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
     <button type="submit">Filtrar</button>
 </form>
 
@@ -85,6 +116,7 @@ th { background: #2c3e50; color: white; }
     <th>Vencimento</th>
     <th>Documento</th>
     <th>Descrição</th>
+    <th>Autor / Favorecido</th>
     <th>Status</th>
     <th>Entrada Prevista</th>
     <th>Saída Prevista</th>
@@ -93,7 +125,7 @@ th { background: #2c3e50; color: white; }
 
 <?php if (empty($lancamentos)): ?>
 <tr>
-    <td colspan="7" style="text-align:center;">
+    <td colspan="8" style="text-align:center;">
         Nenhum lançamento encontrado no período.
     </td>
 </tr>
@@ -125,6 +157,7 @@ th { background: #2c3e50; color: white; }
     <td><?= dataBR($l['data_vencimento']) ?></td>
     <td><?= htmlspecialchars($l['documento_numero'] ?? '') ?></td>
     <td><?= htmlspecialchars($l['descricao'] ?? '') ?></td>
+    <td><?= htmlspecialchars($l['autor_nome'] ?? 'Sem autor') ?></td>
     <td class="<?= $classeStatus ?>"><?= htmlspecialchars($l['status'] ?? '') ?></td>
 
     <td class="entrada">
@@ -143,7 +176,7 @@ th { background: #2c3e50; color: white; }
 <?php endforeach; ?>
 
 <tr>
-    <th colspan="4">Totais do Período</th>
+    <th colspan="5">Totais do Período</th>
     <th class="entrada">R$ <?= moedaBR($total_entradas_previstas) ?></th>
     <th class="saida">R$ <?= moedaBR($total_saidas_previstas) ?></th>
     <th>R$ <?= moedaBR($saldo_previsto) ?></th>

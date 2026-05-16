@@ -16,6 +16,7 @@ $data_fim    = $_GET['data_fim'] ?? '';
 $tipo        = $_GET['tipo'] ?? '';
 $status      = $_GET['status'] ?? '';
 $id_grupo    = $_GET['id_grupo'] ?? '';
+$id_autor    = $_GET['id_autor'] ?? '';
 $forma       = $_GET['forma_de_pagamento_recebimento'] ?? '';
 
 $where = [];
@@ -46,6 +47,11 @@ if ($id_grupo !== '') {
     $params[':id_grupo'] = $id_grupo;
 }
 
+if ($id_autor !== '') {
+    $where[] = "l.id_autor = :id_autor";
+    $params[':id_autor'] = $id_autor;
+}
+
 if ($forma !== '') {
     $where[] = "l.forma_de_pagamento_recebimento = :forma";
     $params[':forma'] = $forma;
@@ -58,6 +64,12 @@ $sqlWhere = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 ===================== */
 $stmt = $pdo->query("SELECT id_grupo, descricao FROM grupos ORDER BY descricao");
 $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* =====================
+   AUTORES
+===================== */
+$stmt = $pdo->query("SELECT id_autor, nome FROM autores ORDER BY nome");
+$autores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* =====================
    LANÇAMENTOS
@@ -75,9 +87,12 @@ $sql = "SELECT
             l.status,
             l.forma_de_pagamento_recebimento,
             l.id_grupo,
-            g.descricao AS grupo_descricao
+            l.id_autor,
+            g.descricao AS grupo_descricao,
+            a.nome AS autor_nome
         FROM lancamentos l
         LEFT JOIN grupos g ON g.id_grupo = l.id_grupo
+        LEFT JOIN autores a ON a.id_autor = l.id_autor
         $sqlWhere
         ORDER BY l.data_vencimento ASC, l.id_lancamento ASC";
 
@@ -329,6 +344,18 @@ function dataBr($data): string
             </div>
 
             <div>
+                <label>Autor / Favorecido</label>
+                <select name="id_autor">
+                    <option value="">Todos</option>
+                    <?php foreach ($autores as $autor): ?>
+                        <option value="<?= $autor['id_autor'] ?>" <?= $id_autor == $autor['id_autor'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($autor['nome']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
                 <label>Forma de Pagamento/Recebimento</label>
                 <select name="forma_de_pagamento_recebimento">
                     <?php foreach ([
@@ -402,6 +429,7 @@ function dataBr($data): string
                 <th>Data Lançamento</th>
                 <th>Descrição</th>
                 <th>Grupo</th>
+                <th>Autor / Favorecido</th>
                 <th>Tipo</th>
                 <th>Vencimento</th>
                 <th>Status</th>
@@ -416,6 +444,7 @@ function dataBr($data): string
                     <td class="centro"><?= dataBr($l['data_lancamento'] ?? '') ?></td>
                     <td><?= htmlspecialchars($l['descricao'] ?? '') ?></td>
                     <td><?= htmlspecialchars($l['grupo_descricao'] ?? 'Sem grupo') ?></td>
+                    <td><?= htmlspecialchars($l['autor_nome'] ?? 'Sem autor') ?></td>
                     <td class="centro"><?= htmlspecialchars($l['tipo'] ?? '') ?></td>
                     <td class="centro"><?= dataBr($l['data_vencimento'] ?? '') ?></td>
                     <td class="centro"><?= htmlspecialchars($l['status'] ?? '') ?></td>

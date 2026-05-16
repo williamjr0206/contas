@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = $_POST['status'] ?? '';
     $forma = $_POST['forma_de_pagamento_recebimento'] ?? '';
     $id_grupo = $_POST['id_grupo'] ?? null;
-
+    $id_autor = $_POST['id_autor'] ?? null;
     $foto_nota = uploadNota($_FILES['foto_nota'] ?? []);
 
     if ($id) {
@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     status = :status,
                     forma_de_pagamento_recebimento = :forma,
                     id_grupo = :id_grupo,
+                    id_autor = :id_autor,
                     foto_nota = :foto
                 WHERE id_lancamento = :id";
 
@@ -93,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     status,
                     forma_de_pagamento_recebimento,
                     id_grupo,
+                    id_autor,
                     foto_nota
                 ) VALUES (
                     :documento_numero,
@@ -106,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     :status,
                     :forma,
                     :id_grupo,
+                    :id_autor,
                     :foto
                 )";
     }
@@ -124,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':status' => $status,
         ':forma' => $forma,
         ':id_grupo' => $id_grupo,
+        ':id_autor' => $id_autor,
         ':foto' => $foto_nota
     ];
 
@@ -180,6 +184,9 @@ $forma_get            = $_GET['forma_de_pagamento_recebimento'] ?? '';
 ===================== */
 $stmt = $pdo->query("SELECT id_grupo, descricao FROM grupos ORDER BY descricao");
 $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt1 = $pdo->query("SELECT id_autor, nome FROM autores ORDER BY nome");
+$autores = $stmt1->fetchAll(PDO::FETCH_ASSOC);
 
 /* =====================
    LISTAR
@@ -294,6 +301,17 @@ foreach ([
 <option value="<?= $g['id_grupo'] ?>"
 <?= (isset($editar['id_grupo']) && $editar['id_grupo'] == $g['id_grupo']) ? 'selected' : '' ?>>
 <?= htmlspecialchars($g['descricao']) ?>
+</option>
+<?php endforeach; ?>
+</select>
+
+<label>Receber ou Pagar por</label>
+<select name="id_autor">
+<option value="">Selecione</option>
+<?php foreach ($autores as $a): ?>
+<option value="<?= $a['id_autor'] ?>"
+<?= (isset($editar['id_autor']) && $editar['id_autor'] == $a['id_autor']) ? 'selected' : '' ?>>
+<?= htmlspecialchars($a['nome']) ?>
 </option>
 <?php endforeach; ?>
 </select>

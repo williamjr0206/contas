@@ -10,10 +10,11 @@ require __DIR__ . '/../includes/menu.php';
 $data_inicio = $_GET['inicio'] ?? date('Y-m-01');
 $data_fim    = $_GET['fim'] ?? date('Y-m-t');
 $status      = $_GET['status'] ?? 'Aberto';
+$id_autor    = $_GET['id_autor'] ?? '';
 
 $where = [
-    "tipo = 'Pagar'",
-    "data_vencimento BETWEEN :inicio AND :fim"
+    "l.tipo = 'Pagar'",
+    "l.data_vencimento BETWEEN :inicio AND :fim"
 ];
 
 $params = [
@@ -22,11 +23,22 @@ $params = [
 ];
 
 if ($status !== 'Todos') {
-    $where[] = "status = :status";
+    $where[] = "l.status = :status";
     $params[':status'] = $status;
 }
 
+if ($id_autor !== '') {
+    $where[] = "l.id_autor = :id_autor";
+    $params[':id_autor'] = $id_autor;
+}
+
 $whereSQL = "WHERE " . implode(" AND ", $where);
+
+/* =====================
+   AUTORES
+===================== */
+$stmt = $pdo->query("SELECT id_autor, nome FROM autores ORDER BY nome");
+$autores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $sql = "SELECT 
             l.id_lancamento,
@@ -39,9 +51,12 @@ $sql = "SELECT
             l.valor_pago,
             l.status,
             l.forma_de_pagamento_recebimento,
-            g.descricao AS grupo
+            l.id_autor,
+            g.descricao AS grupo,
+            a.nome AS autor_nome
         FROM lancamentos l
         LEFT JOIN grupos g ON g.id_grupo = l.id_grupo
+        LEFT JOIN autores a ON a.id_autor = l.id_autor
         $whereSQL
         ORDER BY l.data_vencimento ASC, l.descricao ASC";
 
@@ -209,6 +224,16 @@ tr:nth-child(even) {
             <?php endforeach; ?>
         </select>
 
+        <label>Autor / Favorecido:</label>
+        <select name="id_autor">
+            <option value="">Todos</option>
+            <?php foreach ($autores as $autor): ?>
+                <option value="<?= $autor['id_autor'] ?>" <?= $id_autor == $autor['id_autor'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($autor['nome']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
         <button type="submit">Filtrar</button>
     </form>
 </div>
@@ -238,6 +263,7 @@ tr:nth-child(even) {
         <th>Documento</th>
         <th>Descrição</th>
         <th>Grupo</th>
+        <th>Autor / Favorecido</th>
         <th>Valor</th>
         <th>Status</th>
         <th>Data Pagamento</th>
@@ -247,7 +273,7 @@ tr:nth-child(even) {
 
     <?php if (empty($lancamentos)): ?>
         <tr>
-            <td colspan="9" style="text-align:center;">
+            <td colspan="10" style="text-align:center;">
                 Nenhum compromisso encontrado para o período selecionado.
             </td>
         </tr>
@@ -259,6 +285,7 @@ tr:nth-child(even) {
             <td><?= htmlspecialchars($l['documento_numero'] ?? '') ?></td>
             <td><?= htmlspecialchars($l['descricao'] ?? '') ?></td>
             <td><?= htmlspecialchars($l['grupo'] ?? '') ?></td>
+            <td><?= htmlspecialchars($l['autor_nome'] ?? 'Sem autor') ?></td>
             <td><?= moedaBR($l['valor_nominal'] ?? 0) ?></td>
             <td class="<?= $l['status'] === 'Pago' ? 'pago' : 'aberto' ?>">
                 <?= htmlspecialchars($l['status'] ?? '') ?>
