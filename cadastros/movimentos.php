@@ -194,11 +194,21 @@ if (isset($_GET['delete'])) {
    PRODUTOS PARA SELECT
 ===================== */
 $stmt = $pdo->query("
-    SELECT id_produto, codigo, fornecedor, descricao, saldo
+    SELECT 
+        id_produto,
+        codigo,
+        fornecedor,
+        descricao,
+        tipo_de_produto,
+        unidade,
+        unidade_consumo,
+        fator_conversao_consumo,
+        saldo
     FROM produtos
     ORDER BY descricao, fornecedor, codigo
 ");
 $codigos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 /* =====================
    EDITAR
 ===================== */
@@ -234,6 +244,10 @@ $stmt = $pdo->query("
         p.codigo AS codigo_nf,
         p.fornecedor,
         p.descricao,
+        p.tipo_de_produto,
+        p.unidade,
+        p.unidade_consumo,
+        p.fator_conversao_consumo,
         p.saldo
     FROM movimento AS m
     INNER JOIN produtos AS p 
@@ -254,7 +268,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     form { margin-bottom: 30px; }
     input, select { margin: 6px 0; padding: 6px; width: 460px; display: block; max-width: 100%; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 6px; }
+    th, td { padding: 6px; font-size: 13px; }
     a { margin-right: 10px; }
 </style>
 
@@ -282,8 +296,12 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?= (isset($editar['id_produto']) && $editar['id_produto'] == $c['id_produto']) ? 'selected' : '' ?>>
 <?= htmlspecialchars(
     $c['descricao'] .
+    ' | Tipo: ' . ($c['tipo_de_produto'] ?? '') .
     ' | Fornecedor: ' . $c['fornecedor'] .
     ' | Cód. NF: ' . $c['codigo'] .
+    ' | Unid. Estoque: ' . ($c['unidade'] ?? '') .
+    ' | Unid. Consumo: ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? '')) .
+    ' | Fator: ' . number_format((float)($c['fator_conversao_consumo'] ?? 1), 4, ',', '.') .
     ' | Saldo: ' . number_format((float)$c['saldo'], 4, ',', '.')
 ) ?>
 </option>
@@ -291,7 +309,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </select>
 
-<label>Quantidade</label>
+<label>Quantidade movimentada na unidade de compra / estoque</label>
 <input type="number" step="0.0001" name="quantidade" required value="<?= htmlspecialchars($editar['quantidade'] ?? '') ?>">
 
 <label>Tipo de Lançamento</label>
@@ -324,7 +342,11 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <th>Código NF</th>
     <th>Fornecedor</th>
     <th>Produto</th>
+    <th>Tipo Produto</th>
     <th>Quantidade</th>
+    <th>Unid. Estoque</th>
+    <th>Unid. Consumo</th>
+    <th>Fator</th>
     <th>Movimento</th>
     <th>Saldo Atual</th>
     <th>Ações</th>
@@ -338,7 +360,11 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <td><?= htmlspecialchars($e['codigo_nf']) ?></td>
     <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
+    <td><?= htmlspecialchars($e['tipo_de_produto'] ?? '') ?></td>
     <td><?= htmlspecialchars(number_format((float)$e['quantidade'], 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars($e['unidade'] ?? '') ?></td>
+    <td><?= htmlspecialchars(($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['tipo']) ?></td>
     <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
     <td>
@@ -355,3 +381,5 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
+
+<?php ob_end_flush(); ?>
