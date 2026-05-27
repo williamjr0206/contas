@@ -66,14 +66,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_movimento = $_POST['data_movimento'] ?? '';
     $documento = $_POST['documento'] ?? '';
     $id_produto = (int) ($_POST['id_produto'] ?? 0);
-    $quantidade = (float) ($_POST['quantidade'] ?? 0);
+
+    $quantidade_digitada = str_replace(',', '.', $_POST['quantidade'] ?? 0);
+    $quantidade_digitada = (float) $quantidade_digitada;
+
     $tipo = $_POST['tipo'] ?? '';
 
     try {
         $pdo->beginTransaction();
 
         $stmtProduto = $pdo->prepare("
-            SELECT codigo 
+            SELECT 
+                codigo,
+                unidade,
+                unidade_consumo,
+                fator_conversao_consumo
             FROM produtos 
             WHERE id_produto = :id_produto
         ");
@@ -85,6 +92,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $codigo = $produto['codigo'];
+
+        $fator = (float)($produto['fator_conversao_consumo'] ?? 1);
+
+        if ($fator <= 0) {
+            $fator = 1;
+        }
+
+        $quantidade = $quantidade_digitada * $fator;
 
         if ($id) {
             $stmtOld = $pdo->prepare("
