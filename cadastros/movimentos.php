@@ -99,7 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fator = 1;
         }
 
-        $quantidade = $quantidade_digitada * $fator;
+        if ($tipo === 'Saída') {
+            $quantidade = $quantidade_digitada * $fator;
+        } else {
+            $quantidade = $quantidade_digitada;
+        }
 
         if ($id) {
             $stmtOld = $pdo->prepare("
@@ -124,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         documento = :documento,
                         id_produto = :id_produto,
                         codigo = :codigo,
+                        quantidade_digitada = :quantidade_digitada,
                         quantidade = :quantidade,
                         tipo = :tipo
                     WHERE id_movimento = :id";
@@ -133,9 +138,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } else {
             $sql = "INSERT INTO movimento 
-                    (data_movimento, documento, id_produto, codigo, quantidade, tipo)
+                    (data_movimento, documento, id_produto, codigo, quantidade_digitada, quantidade, tipo)
                     VALUES 
-                    (:data_movimento, :documento, :id_produto, :codigo, :quantidade, :tipo)";
+                    (:data_movimento, :documento, :id_produto, :codigo, :quantidade_digitada, :quantidade, :tipo)";
 
             $stmt = $pdo->prepare($sql);
         }
@@ -144,6 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindParam(':documento', $documento);
         $stmt->bindParam(':id_produto', $id_produto);
         $stmt->bindParam(':codigo', $codigo);
+        $stmt->bindParam(':quantidade_digitada', $quantidade_digitada);
         $stmt->bindParam(':quantidade', $quantidade);
         $stmt->bindParam(':tipo', $tipo);
         $stmt->execute();
@@ -253,6 +259,7 @@ $stmt = $pdo->query("
         m.data_movimento,
         m.documento,
         m.codigo,
+        m.quantidade_digitada,
         m.quantidade,
         m.tipo,
         p.id_produto,
@@ -325,7 +332,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </select>
 
 <label>Quantidade movimentada na unidade de compra / estoque</label>
-<input type="number" step="0.0001" name="quantidade" required value="<?= htmlspecialchars($editar['quantidade'] ?? '') ?>">
+<input type="number" step="0.0001" name="quantidade" required value="<?= htmlspecialchars($editar['quantidade_digitada'] ?? $editar['quantidade'] ?? '') ?>">
 
 <label>Tipo de Lançamento</label>
 <select name="tipo" required>
@@ -376,7 +383,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
     <td><?= htmlspecialchars($e['tipo_de_produto'] ?? '') ?></td>
-    <td><?= htmlspecialchars(number_format((float)$e['quantidade'], 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['quantidade_digitada'] ?? $e['quantidade']), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['unidade'] ?? '') ?></td>
     <td><?= htmlspecialchars(($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')) ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
