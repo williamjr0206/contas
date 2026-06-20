@@ -19,6 +19,7 @@ $cards = [
     ['chave' => 'produto', 'titulo' => 'Cadastro de Produtos', 'texto' => 'Produtos.', 'link' => $baseUrl . 'cadastros/produtos.php'],
     ['chave' => 'movimento', 'titulo' => 'Lançamentos de Estoque', 'texto' => 'Lançamentos Estoque.', 'link' => $baseUrl . 'cadastros/movimentos.php'],
     ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'texto' => 'Relatório de estoque com saldo, preço e valor total.', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
+    ['chave' => 'claudia', 'titulo' => 'Acompanhamento Cláudia', 'texto' => 'Medições de glicemia e Refeições da Cláudia.', 'link' => $baseUrl . 'cadastros/claudia.php'],
 ];
 ?>
 <!DOCTYPE html>

@@ -132,6 +132,7 @@ function temPermissao(string $chave): bool
             'produto',
             'movimento',
             'estoque_produtos',
+            'claudia',
 
             /* 🔐 ATAS - SOMENTE ADMIN */
             'atas',
@@ -157,10 +158,7 @@ function temPermissao(string $chave): bool
            OPERADOR
         ====================== */
         'OPERADOR' => [
-            'dashboard',
-            'visitantes',
-            'presencas',
-            'boas_vindas',
+            'claudia',
             'sair'
         ],
 
