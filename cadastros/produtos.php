@@ -130,9 +130,31 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     body { font-family: Arial; margin: 20px; }
     form { margin-bottom: 30px; }
     input, select { margin: 6px 0; padding: 6px; width: 360px; display: block; max-width: 100%; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 6px; }
     a { margin-right: 10px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 9px;
+            font-size: 14px;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f8f8;
+        }
+
 </style>
 
 </head>
@@ -208,14 +230,15 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <tr>
     <th>ID</th>
     <th>Código NF</th>
-    <th>Fornecedor</th>
     <th>Descrição</th>
+    <th>Fornecedor</th>
     <th>Tipo</th>
     <th>Preço / Custo R$</th>
     <th>Unid. Compra</th>
     <th>Unid. Consumo</th>
     <th>Fator Conversão</th>
     <th>Saldo</th>
+    <th>Saldo Consumo</th>
     <th>Ações</th>
 </tr>
 
@@ -223,14 +246,29 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <tr>
     <td><?= htmlspecialchars($e['id_produto']) ?></td>
     <td><?= htmlspecialchars($e['codigo']) ?></td>
-    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
+    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['tipo_de_produto'] ?? 'Produto Acabado') ?></td>
     <td><?= htmlspecialchars(number_format((float)$e['preco'], 2, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['unidade']) ?></td>
     <td><?= htmlspecialchars($e['unidade_consumo'] ?? '') ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
+    <?php
+$fator_consumo = (float)($e['fator_conversao_consumo'] ?? 1);
+if ($fator_consumo <= 0) {
+    $fator_consumo = 1;
+}
+
+$saldo_consumo = (float)$e['saldo'] / $fator_consumo;
+
+$unidade_consumo_exibir = ($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '');
+?>
+
+<td>
+    <?= htmlspecialchars(number_format($saldo_consumo, 4, ',', '.')) ?>
+    <?= htmlspecialchars($unidade_consumo_exibir) ?>
+</td>
     <td>
         <a href="produtos.php?edit=<?= $e['id_produto'] ?>">Editar</a>
         <a href="produtos.php?delete=<?= $e['id_produto'] ?>"

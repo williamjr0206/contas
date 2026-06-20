@@ -16,6 +16,7 @@ $menu = [
         ['chave' => 'produto', 'titulo' => 'Produtos', 'link' => $baseUrl . 'cadastros/produtos.php'],
         ['chave' => 'movimento', 'titulo' => 'Lançamentos Estoque', 'link' => $baseUrl . 'cadastros/movimentos.php'],
         ['chave' => 'claudia', 'titulo' => 'Medições glicêmicas e Refeições da Cláudia', 'link' => $baseUrl . 'cadastros/claudia.php'],
+        ['chave' => 'resumo', 'titulo' => 'Resumo de Movimento de Estoque', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
     ],
 
     'Relatórios' => [

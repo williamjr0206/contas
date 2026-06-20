@@ -324,8 +324,14 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     ' | Unid. Estoque: ' . ($c['unidade'] ?? '') .
     ' | Unid. Consumo: ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? '')) .
     ' | Fator: ' . number_format((float)($c['fator_conversao_consumo'] ?? 1), 4, ',', '.') .
-    ' | Saldo: ' . number_format((float)$c['saldo'], 4, ',', '.')
-) ?>
+    ' | Saldo Estoque: ' . number_format((float)$c['saldo'], 4, ',', '.') . ' ' . ($c['unidade'] ?? '') .
+    ' | Saldo Consumo: ' . number_format(
+        ((float)$c['saldo']) / (((float)($c['fator_conversao_consumo'] ?? 1) > 0) ? (float)$c['fator_conversao_consumo'] : 1),
+        4,
+        ',',
+        '.'
+    ) . ' ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? ''))
+    ) ?>
 </option>
 <?php endforeach; ?>
 

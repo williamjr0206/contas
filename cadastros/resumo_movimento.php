@@ -9,16 +9,10 @@ verificaAcesso();
 
 require __DIR__ . '/../includes/menu.php';
 
-/* =====================
-   FILTROS
-===================== */
 $data_inicio = $_GET['data_inicio'] ?? date('Y-m-01');
 $data_fim = $_GET['data_fim'] ?? date('Y-m-d');
 $tipo_de_produto = $_GET['tipo_de_produto'] ?? '';
 
-/* =====================
-   TIPOS DE PRODUTO
-===================== */
 $stmtTipos = $pdo->query("
     SELECT DISTINCT tipo_de_produto
     FROM produtos
@@ -28,9 +22,6 @@ $stmtTipos = $pdo->query("
 ");
 $tipos = $stmtTipos->fetchAll(PDO::FETCH_ASSOC);
 
-/* =====================
-   CONSULTA RESUMIDA
-===================== */
 $where = "
     WHERE m.data_movimento BETWEEN :data_inicio AND :data_fim
 ";
@@ -52,18 +43,7 @@ $sql = "
         p.fornecedor,
         p.descricao,
         p.tipo_de_produto,
-        p.unidade,
         p.preco,
-
-        SUM(CASE 
-            WHEN m.tipo IN ('Entrada', 'Retorno') THEN m.quantidade 
-            ELSE 0 
-        END) AS qtd_entrada,
-
-        SUM(CASE 
-            WHEN m.tipo = 'Saída' THEN m.quantidade 
-            ELSE 0 
-        END) AS qtd_saida,
 
         SUM(CASE 
             WHEN m.tipo IN ('Entrada', 'Retorno') THEN m.quantidade * p.preco
@@ -87,35 +67,24 @@ $sql = "
         p.fornecedor,
         p.descricao,
         p.tipo_de_produto,
-        p.unidade,
         p.preco
 
     ORDER BY
-        p.tipo_de_produto,
-        p.descricao,
-        p.fornecedor
+        p.descricao
 ";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $resumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* =====================
-   TOTAIS
-===================== */
-$total_qtd_entrada = 0;
-$total_qtd_saida = 0;
 $total_valor_entrada = 0;
 $total_valor_saida = 0;
 
 foreach ($resumos as $r) {
-    $total_qtd_entrada += (float)$r['qtd_entrada'];
-    $total_qtd_saida += (float)$r['qtd_saida'];
     $total_valor_entrada += (float)$r['valor_entrada'];
     $total_valor_saida += (float)$r['valor_saida'];
 }
 
-$total_saldo_qtd = $total_qtd_entrada - $total_qtd_saida;
 $total_saldo_valor = $total_valor_entrada - $total_valor_saida;
 ?>
 
@@ -132,12 +101,36 @@ $total_saldo_valor = $total_valor_entrada - $total_valor_saida;
     table { border-collapse: collapse; width: 100%; }
     th, td { padding: 6px; font-size: 13px; }
     a { margin-right: 10px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 9px;
+            font-size: 14px;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f8f8;
+        }
+
 </style>
 
 </head>
 <body>
 
-<h2>Resumo de Movimentação de Estoque</h2>
+<h2>Resumo Financeiro de Movimentação de Estoque</h2>
 
 <form method="get">
 
@@ -173,64 +166,49 @@ $total_saldo_valor = $total_valor_entrada - $total_valor_saida;
 
 <table border="1">
 <tr>
-    <th>ID Produto</th>
+
     <th>Código</th>
-    <th>Fornecedor</th>
     <th>Produto</th>
+    <th>Fornecedor</th>
     <th>Tipo Produto</th>
-    <th>Unidade</th>
     <th>Preço R$</th>
-    <th>Qtd Entrada</th>
-    <th>Valor Entrada R$</th>
-    <th>Qtd Saída</th>
-    <th>Valor Saída R$</th>
-    <th>Saldo Qtd</th>
+    <th>Entradas R$</th>
+    <th>Saídas R$</th>
     <th>Saldo R$</th>
 </tr>
 
 <?php if (count($resumos) === 0): ?>
 <tr>
-    <td colspan="13">Nenhuma movimentação encontrada no período informado.</td>
+    <td colspan="9">Nenhuma movimentação encontrada no período informado.</td>
 </tr>
 <?php endif; ?>
 
 <?php foreach ($resumos as $r): ?>
 
 <?php
-$qtd_entrada = (float)$r['qtd_entrada'];
-$qtd_saida = (float)$r['qtd_saida'];
 $valor_entrada = (float)$r['valor_entrada'];
 $valor_saida = (float)$r['valor_saida'];
-
-$saldo_qtd = $qtd_entrada - $qtd_saida;
 $saldo_valor = $valor_entrada - $valor_saida;
 ?>
 
 <tr>
-    <td><?= htmlspecialchars($r['id_produto']) ?></td>
+
     <td><?= htmlspecialchars($r['codigo']) ?></td>
-    <td><?= htmlspecialchars($r['fornecedor']) ?></td>
     <td><?= htmlspecialchars($r['descricao']) ?></td>
+    <td><?= htmlspecialchars($r['fornecedor']) ?></td>
     <td><?= htmlspecialchars($r['tipo_de_produto'] ?? '') ?></td>
-    <td><?= htmlspecialchars($r['unidade'] ?? '') ?></td>
     <td><?= htmlspecialchars(number_format((float)$r['preco'], 2, ',', '.')) ?></td>
-    <td><?= htmlspecialchars(number_format($qtd_entrada, 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format($valor_entrada, 2, ',', '.')) ?></td>
-    <td><?= htmlspecialchars(number_format($qtd_saida, 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format($valor_saida, 2, ',', '.')) ?></td>
-    <td><?= htmlspecialchars(number_format($saldo_qtd, 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format($saldo_valor, 2, ',', '.')) ?></td>
 </tr>
 
 <?php endforeach; ?>
 
 <tr>
-    <th colspan="7">TOTAL DO PERÍODO</th>
-    <th><?= htmlspecialchars(number_format($total_qtd_entrada, 4, ',', '.')) ?></th>
+    <th colspan="6">TOTAL DO PERÍODO</th>
     <th><?= htmlspecialchars(number_format($total_valor_entrada, 2, ',', '.')) ?></th>
-    <th><?= htmlspecialchars(number_format($total_qtd_saida, 4, ',', '.')) ?></th>
     <th><?= htmlspecialchars(number_format($total_valor_saida, 2, ',', '.')) ?></th>
-    <th><?= htmlspecialchars(number_format($total_saldo_qtd, 4, ',', '.')) ?></th>
     <th><?= htmlspecialchars(number_format($total_saldo_valor, 2, ',', '.')) ?></th>
 </tr>
 

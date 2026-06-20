@@ -19,6 +19,9 @@ $stmt = $pdo->query("
         fornecedor,
         preco,
         saldo,
+        unidade,
+        unidade_consumo,
+        fator_conversao_consumo,
         (preco * saldo) AS valor_total
     FROM produtos
     ORDER BY descricao, fornecedor
@@ -110,22 +113,44 @@ th {
     <th>Produto</th>
     <th>Fornecedor</th>
     <th>Preço R$</th>
-    <th>Saldo</th>
+    <th>Saldo Estoque</th>
+    <th>Unid. Estoque</th>
+    <th>Saldo Consumo</th>
+    <th>Unid. Consumo</th>
     <th>Valor Total R$</th>
 </tr>
 
 <?php foreach ($produtos as $p): ?>
+
+<?php
+$fator = (float)($p['fator_conversao_consumo'] ?? 1);
+
+if ($fator <= 0) {
+    $fator = 1;
+}
+
+$saldo_consumo = (float)$p['saldo'] / $fator;
+
+$unidade_consumo = !empty($p['unidade_consumo'])
+    ? $p['unidade_consumo']
+    : $p['unidade'];
+?>
+
 <tr>
     <td><?= htmlspecialchars($p['descricao']) ?></td>
     <td><?= htmlspecialchars($p['fornecedor']) ?></td>
     <td class="numero"><?= number_format((float)$p['preco'], 2, ',', '.') ?></td>
     <td class="numero"><?= number_format((float)$p['saldo'], 4, ',', '.') ?></td>
+    <td><?= htmlspecialchars($p['unidade']) ?></td>
+    <td class="numero"><?= number_format($saldo_consumo, 4, ',', '.') ?></td>
+    <td><?= htmlspecialchars($unidade_consumo) ?></td>
     <td class="numero"><?= number_format((float)$p['valor_total'], 2, ',', '.') ?></td>
 </tr>
+
 <?php endforeach; ?>
 
 <tr class="total-geral">
-    <td colspan="4" class="numero">TOTAL EM ESTOQUE R$</td>
+    <td colspan="7" class="numero">TOTAL EM ESTOQUE R$</td>
     <td class="numero"><?= number_format($total_estoque, 2, ',', '.') ?></td>
 </tr>
 

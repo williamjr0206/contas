@@ -20,6 +20,7 @@ $cards = [
     ['chave' => 'movimento', 'titulo' => 'Lançamentos de Estoque', 'texto' => 'Lançamentos Estoque.', 'link' => $baseUrl . 'cadastros/movimentos.php'],
     ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'texto' => 'Relatório de estoque com saldo, preço e valor total.', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
     ['chave' => 'claudia', 'titulo' => 'Acompanhamento Cláudia', 'texto' => 'Medições de glicemia e Refeições da Cláudia.', 'link' => $baseUrl . 'cadastros/claudia.php'],
+    ['chave' => 'resumo', 'titulo' => 'Resumo de movimentação de Estoque por período', 'texto' => 'Resumo de movimentação do Estoque.', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
 ];
 ?>
 <!DOCTYPE html>
