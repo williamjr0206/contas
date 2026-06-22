@@ -21,6 +21,8 @@ $cards = [
     ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'texto' => 'Relatório de estoque com saldo, preço e valor total.', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
     ['chave' => 'claudia', 'titulo' => 'Acompanhamento Cláudia', 'texto' => 'Medições de glicemia e Refeições da Cláudia.', 'link' => $baseUrl . 'cadastros/claudia.php'],
     ['chave' => 'resumo', 'titulo' => 'Resumo de movimentação de Estoque por período', 'texto' => 'Resumo de movimentação do Estoque.', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
+    ['chave' => 'pessoa', 'titulo' => 'Cadastro de Pessoas', 'texto' => 'Cadastro de Pessoas para sugestões de cardápio do Juca.', 'link' => $baseUrl . 'cadastros/pessoas.php'],
+    ['chave' => 'pessoa', 'titulo' => 'Cardápio do Juca', 'texto' => 'Sugestão de Cardápio do Juca.', 'link' => $baseUrl . 'relatorios/sugestao_cardapio_ia.php'],
 ];
 ?>
 <!DOCTYPE html>
@@ -28,7 +30,7 @@ $cards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contas a Pagar e Receber</title>
+    <title>Contas a Pagar, Receber, Estoque e Cláudia</title>
     <style>
         body {
             margin: 0;
@@ -108,7 +110,7 @@ $cards = [
 <div class="container">
     <div class="boas-vindas">
         <h2>Bem-vindo, <?= htmlspecialchars(nomeUsuarioAtual()) ?>!</h2>
-        <p>Seu perfil atual é <strong><?= htmlspecialchars($perfil) ?></strong>. Abaixo estão os atalhos disponíveis no sistema da IPI Muzambinho.</p>
+        <p>Seu perfil atual é <strong><?= htmlspecialchars($perfil) ?></strong>. Abaixo estão os atalhos disponíveis no sistema da Pagar/Receber/Estoque e Cláudia.</p>
     </div>
 
     <div class="grid">

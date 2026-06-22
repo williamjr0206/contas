@@ -17,6 +17,7 @@ $menu = [
         ['chave' => 'movimento', 'titulo' => 'Lançamentos Estoque', 'link' => $baseUrl . 'cadastros/movimentos.php'],
         ['chave' => 'claudia', 'titulo' => 'Medições glicêmicas e Refeições da Cláudia', 'link' => $baseUrl . 'cadastros/claudia.php'],
         ['chave' => 'resumo', 'titulo' => 'Resumo de Movimento de Estoque', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
+        ['chave' => 'pessoa', 'titulo' => 'Cadastro de Pessoas', 'link' => $baseUrl . 'cadastros/pessoas.php'],
     ],
 
     'Relatórios' => [
@@ -25,6 +26,7 @@ $menu = [
         ['chave' => 'compromissos_pagar', 'titulo' => 'Compromissos a Pagar', 'link' => $baseUrl . 'relatorios/compromissos_pagamentos.php'],
         ['chave' => 'relatorio_financeiro', 'titulo' => 'Prestação de Contas', 'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
         ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
+        ['chave' => 'cardapio', 'titulo' => 'Sugestão de Cardápio do Juca', 'link' => $baseUrl . 'relatorios/sugestao_cardapio_ia.php'],
     ],
 
     'Sessão' => [
@@ -128,7 +130,7 @@ $menu = [
 </style>
 
 <div class="topo-sistema">
-    <div class="titulo">Sistemas - Pagar/Receber/Estoques - SZJW</div>
+    <div class="titulo">Sistemas - Pagar/Receber/Estoques/Cláudia - SZJW</div>
     <div class="usuario">
         <?= htmlspecialchars(nomeUsuarioAtual()) ?> - Perfil: <strong><?= htmlspecialchars(perfilAtual()) ?></strong>
     </div>

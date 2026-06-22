@@ -146,11 +146,13 @@ function temPermissao(string $chave): bool
             'historico_membro',
             'nota_fiscal',
             'resumo',
+            'pessoa',
             'presencas',
             'relatorios',
             'consultas',
             'lista_de_presencas',
             'boas_vindas',
+            'cardapio',
             'sair'
         ],
 
@@ -159,6 +161,8 @@ function temPermissao(string $chave): bool
         ====================== */
         'OPERADOR' => [
             'claudia',
+            'pessoa',
+            'cardapio',
             'sair'
         ],
 
