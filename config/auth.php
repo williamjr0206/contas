@@ -153,6 +153,7 @@ function temPermissao(string $chave): bool
             'lista_de_presencas',
             'boas_vindas',
             'cardapio',
+            'receitas',
             'sair'
         ],
 
@@ -163,6 +164,7 @@ function temPermissao(string $chave): bool
             'claudia',
             'pessoa',
             'cardapio',
+            'receitas',
             'sair'
         ],
 

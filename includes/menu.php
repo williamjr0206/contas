@@ -18,6 +18,7 @@ $menu = [
         ['chave' => 'claudia', 'titulo' => 'Medições glicêmicas e Refeições da Cláudia', 'link' => $baseUrl . 'cadastros/claudia.php'],
         ['chave' => 'resumo', 'titulo' => 'Resumo de Movimento de Estoque', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
         ['chave' => 'pessoa', 'titulo' => 'Cadastro de Pessoas', 'link' => $baseUrl . 'cadastros/pessoas.php'],
+        ['chave' => 'receitas', 'titulo' => 'Receitas da Zenilda', 'link' => $baseUrl . 'cadastros/receitas.php'],
     ],
 
     'Relatórios' => [

@@ -23,6 +23,7 @@ $cards = [
     ['chave' => 'resumo', 'titulo' => 'Resumo de movimentação de Estoque por período', 'texto' => 'Resumo de movimentação do Estoque.', 'link' => $baseUrl . 'cadastros/resumo_movimento.php'],
     ['chave' => 'pessoa', 'titulo' => 'Cadastro de Pessoas', 'texto' => 'Cadastro de Pessoas para sugestões de cardápio do Juca.', 'link' => $baseUrl . 'cadastros/pessoas.php'],
     ['chave' => 'pessoa', 'titulo' => 'Cardápio do Juca', 'texto' => 'Sugestão de Cardápio do Juca.', 'link' => $baseUrl . 'relatorios/sugestao_cardapio_ia.php'],
+    ['chave' => 'receitas', 'titulo' => 'Receitas da Zenilda', 'texto' => 'Receitas da Zenilda.', 'link' => $baseUrl . 'cadastros/receitas.php'],
 ];
 ?>
 <!DOCTYPE html>
