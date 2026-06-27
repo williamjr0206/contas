@@ -376,7 +376,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <th>Unid. Consumo</th>
     <th>Fator</th>
     <th>Movimento</th>
-    <th>Saldo Atual</th>
+    <th>Saldo Atual Consumo</th>
     <th>Ações</th>
 </tr>
 
@@ -394,7 +394,21 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <td><?= htmlspecialchars(($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')) ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['tipo']) ?></td>
-    <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
+            <?php
+            $fator_saldo = (float)($e['fator_conversao_consumo'] ?? 1);
+
+            if ($fator_saldo <= 0) {
+                $fator_saldo = 1;
+            }
+
+            $saldo_atual_consumo = (float)$e['saldo'] / $fator_saldo;
+            $unidade_saldo_consumo = ($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '');
+            ?>
+
+    <td>
+    <?= htmlspecialchars(number_format($saldo_atual_consumo, 4, ',', '.')) ?>
+    <?= htmlspecialchars($unidade_saldo_consumo) ?>
+</td>
     <td>
         <a href="movimentos.php?edit=<?= $e['id_movimento'] ?>">Editar</a>
         <a href="movimentos.php?delete=<?= $e['id_movimento'] ?>"

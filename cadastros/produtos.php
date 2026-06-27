@@ -18,6 +18,21 @@ function normalizarDescricaoProduto($texto)
 }
 
 /* =====================
+   BUSCAR MEDIDAS CASEIRAS
+===================== */
+$stmt = $pdo->query("
+    SELECT 
+        id_medida,
+        descricao,
+        quantidade,
+        unidade
+    FROM medidas_caseiras
+    WHERE ativo = 'S'
+    ORDER BY descricao
+");
+$medidas_caseiras = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* =====================
    SALVAR / EDITAR
 ===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $preco = $_POST['preco'] ?? 0;
     $unidade = $_POST['unidade'] ?? '';
     $unidade_consumo = $_POST['unidade_consumo'] ?? '';
+    $id_medida_caseira = $_POST['id_medida_caseira'] !== '' ? $_POST['id_medida_caseira'] : null;
 
     $quantidade_embalagem = $_POST['quantidade_embalagem'] !== '' ? $_POST['quantidade_embalagem'] : 1;
     $peso_unidade_consumo = $_POST['peso_unidade_consumo'] !== '' ? $_POST['peso_unidade_consumo'] : 1;
@@ -57,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             preco = :preco,
             unidade = :unidade,
             unidade_consumo = :unidade_consumo,
+            id_medida_caseira = :id_medida_caseira,
             quantidade_embalagem = :quantidade_embalagem,
             peso_unidade_consumo = :peso_unidade_consumo,
             fator_conversao_consumo = :fator_conversao_consumo,
@@ -67,11 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':id', $id);
+
     } else {
         $sql = "INSERT INTO produtos 
-        (codigo, fornecedor, descricao, tipo_de_produto, preco, unidade, unidade_consumo, quantidade_embalagem, peso_unidade_consumo, fator_conversao_consumo, saldo, cadastrado_em, descricao_normalizada)
+        (codigo, fornecedor, descricao, tipo_de_produto, preco, unidade, unidade_consumo, id_medida_caseira, quantidade_embalagem, peso_unidade_consumo, fator_conversao_consumo, saldo, cadastrado_em, descricao_normalizada)
         VALUES 
-        (:codigo, :fornecedor, :descricao, :tipo_de_produto, :preco, :unidade, :unidade_consumo, :quantidade_embalagem, :peso_unidade_consumo, :fator_conversao_consumo, :saldo, :cadastrado_em, :descricao_normalizada)";
+        (:codigo, :fornecedor, :descricao, :tipo_de_produto, :preco, :unidade, :unidade_consumo, :id_medida_caseira, :quantidade_embalagem, :peso_unidade_consumo, :fator_conversao_consumo, :saldo, :cadastrado_em, :descricao_normalizada)";
 
         $stmt = $pdo->prepare($sql);
     }
@@ -83,6 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bindParam(':preco', $preco);
     $stmt->bindParam(':unidade', $unidade);
     $stmt->bindParam(':unidade_consumo', $unidade_consumo);
+    $stmt->bindParam(':id_medida_caseira', $id_medida_caseira);
     $stmt->bindParam(':quantidade_embalagem', $quantidade_embalagem);
     $stmt->bindParam(':peso_unidade_consumo', $peso_unidade_consumo);
     $stmt->bindParam(':fator_conversao_consumo', $fator_conversao_consumo);
@@ -131,9 +150,15 @@ if (isset($_GET['edit'])) {
    LISTAR
 ===================== */
 $stmt = $pdo->query("
-    SELECT * 
-    FROM produtos 
-    ORDER BY descricao, fornecedor, codigo
+    SELECT 
+        p.*,
+        mc.descricao AS medida_caseira_descricao,
+        mc.quantidade AS medida_caseira_quantidade,
+        mc.unidade AS medida_caseira_unidade
+    FROM produtos p
+    LEFT JOIN medidas_caseiras mc 
+        ON mc.id_medida = p.id_medida_caseira
+    ORDER BY p.descricao, p.fornecedor, p.codigo
 ");
 $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -190,9 +215,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <div class="info">
     <strong>Regra de conversão:</strong><br>
     Fator = Peso/Volume de 1 unidade de consumo ÷ Quantidade da embalagem.<br><br>
-    Exemplo ovos: 1 cartela com 20 ovos → 1 ÷ 20 = 0,05<br>
-    Exemplo creme de leite: 1 caixa com 500 ml → 1 ÷ 500 = 0,002<br>
-    Exemplo pão francês: compra em KG e consumo em unidade. 1 kg = 1000 g, 1 pão = 50 g → 50 ÷ 1000 = 0,05
+    A medida caseira é opcional. Se selecionada, ela preenche automaticamente o peso/volume da unidade de consumo.
 </div>
 
 <form method="post">
@@ -212,15 +235,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <select name="tipo_de_produto" required>
     <?php
     $tipoAtual = $editar['tipo_de_produto'] ?? 'Alimentos';
-
-    $tipos = [
-        'Cozinha',
-        'Banheiro',
-        'Alimentos',
-        'Remédios',
-        'Vestuários',
-        'Outros'
-    ];
+    $tipos = ['Cozinha', 'Banheiro', 'Alimentos', 'Remédios', 'Vestuários', 'Outros'];
 
     foreach ($tipos as $tipo):
     ?>
@@ -239,18 +254,34 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <label>Unidade de Consumo / Receita</label>
 <input name="unidade_consumo" required placeholder="Ex: UN, ML, G, KG" value="<?= htmlspecialchars($editar['unidade_consumo'] ?? '') ?>">
 
+<label>Medida Caseira da Unidade de Consumo</label>
+<select name="id_medida_caseira" id="id_medida_caseira">
+    <option value="">Não usar medida caseira</option>
+
+    <?php foreach ($medidas_caseiras as $m): ?>
+        <option 
+            value="<?= $m['id_medida'] ?>"
+            data-quantidade="<?= htmlspecialchars($m['quantidade']) ?>"
+            data-unidade="<?= htmlspecialchars($m['unidade']) ?>"
+            <?= (isset($editar['id_medida_caseira']) && $editar['id_medida_caseira'] == $m['id_medida']) ? 'selected' : '' ?>>
+            <?= htmlspecialchars($m['descricao']) ?> 
+            - <?= number_format((float)$m['quantidade'], 4, ',', '.') ?> <?= htmlspecialchars($m['unidade']) ?>
+        </option>
+    <?php endforeach; ?>
+</select>
+
 <label>Quantidade da Embalagem</label>
-<input type="number" name="quantidade_embalagem" step="0.0001" required
+<input type="number" id="quantidade_embalagem" name="quantidade_embalagem" step="0.0001" required
        placeholder="Ex: 20 ovos, 500 ml, 1000 g"
        value="<?= htmlspecialchars($editar['quantidade_embalagem'] ?? 1) ?>">
 
 <label>Peso / Volume de 1 Unidade de Consumo</label>
-<input type="number" name="peso_unidade_consumo" step="0.0001" required
-       placeholder="Ex: 1 para ovos/ml/g, 50 para pão francês"
+<input type="number" id="peso_unidade_consumo" name="peso_unidade_consumo" step="0.0001" required
+       placeholder="Ex: 3 para dente de alho, 15 para colher de azeite"
        value="<?= htmlspecialchars($editar['peso_unidade_consumo'] ?? 1) ?>">
 
 <label>Fator de Conversão para Consumo</label>
-<input type="number" name="fator_conversao_consumo" step="0.0001" readonly
+<input type="number" id="fator_conversao_consumo" name="fator_conversao_consumo" step="0.0001" readonly
        value="<?= htmlspecialchars($editar['fator_conversao_consumo'] ?? 1) ?>">
 
 <label>Saldo na Unidade de Compra / Estoque</label>
@@ -279,6 +310,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <th>Preço / Custo R$</th>
     <th>Unid. Compra</th>
     <th>Unid. Consumo</th>
+    <th>Medida Caseira</th>
     <th>Qtd. Embalagem</th>
     <th>Peso Unid. Consumo</th>
     <th>Fator Conversão</th>
@@ -307,6 +339,17 @@ $unidade_consumo_exibir = ($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')
     <td><?= htmlspecialchars(number_format((float)$e['preco'], 2, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['unidade']) ?></td>
     <td><?= htmlspecialchars($e['unidade_consumo'] ?? '') ?></td>
+    <td>
+        <?php if (!empty($e['medida_caseira_descricao'])): ?>
+            <?= htmlspecialchars($e['medida_caseira_descricao']) ?><br>
+            <small>
+                <?= number_format((float)$e['medida_caseira_quantidade'], 4, ',', '.') ?>
+                <?= htmlspecialchars($e['medida_caseira_unidade']) ?>
+            </small>
+        <?php else: ?>
+            -
+        <?php endif; ?>
+    </td>
     <td><?= htmlspecialchars(number_format((float)($e['quantidade_embalagem'] ?? 1), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['peso_unidade_consumo'] ?? 1), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
@@ -326,6 +369,29 @@ $unidade_consumo_exibir = ($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')
 <?php endforeach; ?>
 
 </table>
+
+<script>
+function recalcularFator() {
+    const quantidadeEmbalagem = parseFloat(document.getElementById('quantidade_embalagem').value) || 1;
+    const pesoUnidadeConsumo = parseFloat(document.getElementById('peso_unidade_consumo').value) || 1;
+    const fator = pesoUnidadeConsumo / quantidadeEmbalagem;
+
+    document.getElementById('fator_conversao_consumo').value = fator.toFixed(4);
+}
+
+document.getElementById('id_medida_caseira').addEventListener('change', function () {
+    const option = this.options[this.selectedIndex];
+    const quantidade = option.getAttribute('data-quantidade');
+
+    if (quantidade) {
+        document.getElementById('peso_unidade_consumo').value = parseFloat(quantidade).toFixed(4);
+        recalcularFator();
+    }
+});
+
+document.getElementById('quantidade_embalagem').addEventListener('input', recalcularFator);
+document.getElementById('peso_unidade_consumo').addEventListener('input', recalcularFator);
+</script>
 
 </body>
 </html>

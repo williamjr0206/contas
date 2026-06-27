@@ -217,9 +217,22 @@ foreach ($produtos as $p) {
             $suficiente = true;
         }
 
-        $preco = (float)($produtoEncontrado['preco'] ?? 0);
-        $custo_estimado = $necessario * $preco;
-    }
+$preco = (float)($produtoEncontrado['preco'] ?? 0);
+
+/*
+    O preço está na unidade de compra/estoque.
+    O fator_conversao_consumo representa quanto da unidade de compra
+    corresponde a 1 unidade de consumo.
+
+    Exemplo:
+    Compra: 1 KG por R$ 20,00
+    Consumo: 1 unidade de 50g
+    Fator: 0,05
+    Custo unitário consumo = 20,00 * 0,05 = 1,00
+*/
+
+$custo_unitario_consumo = $preco * $fator;
+$custo_estimado = $necessario * $custo_unitario_consumo;    }
 
     $resultado[] = [
         'ingrediente' => $ing,
