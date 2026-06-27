@@ -11,13 +11,106 @@ require __DIR__ . '/../includes/menu.php';
 
 function normalizarTexto($texto)
 {
-    $texto = mb_strtoupper(trim($texto), 'UTF-8');
+    $texto = mb_strtoupper(trim($texto ?? ''), 'UTF-8');
     $texto = iconv('UTF-8', 'ASCII//TRANSLIT', $texto);
-    $texto = preg_replace('/[^A-Z0-9]/', '', $texto);
-    return $texto;
+    $texto = preg_replace('/[^A-Z0-9 ]/', ' ', $texto);
+    $texto = preg_replace('/\s+/', ' ', $texto);
+    return trim($texto);
 }
 
-function moeda($valor)
+function singularizarPalavra($palavra)
+{
+    if (strlen($palavra) > 4 && substr($palavra, -2) === 'ES') {
+        return substr($palavra, 0, -2);
+    }
+
+    if (strlen($palavra) > 3 && substr($palavra, -1) === 'S') {
+        return substr($palavra, 0, -1);
+    }
+
+    return $palavra;
+}
+
+function palavrasRelevantes($texto)
+{
+    $texto = normalizarTexto($texto);
+    $palavras = explode(' ', $texto);
+
+    $ignorar = [
+        'DE','DA','DO','DAS','DOS','COM','SEM','PARA','POR','EM','A','O','AS','OS','E',
+        'UN','UND','UNIDADE','UNIDADES','KG','G','GR','ML','L','LT',
+        'PACOTE','PCT','CAIXA','CX','LATA','VIDRO','SACHE','SACHET',
+        'CARTELA','BANDEJA','POTE','TIPO','TRADICIONAL','ESPECIAL',
+        'MEDIA','MEDIO','PEQUENA','PEQUENO','GRANDE'
+    ];
+
+    $resultado = [];
+
+    foreach ($palavras as $p) {
+        $p = singularizarPalavra($p);
+
+        if (strlen($p) >= 3 && !in_array($p, $ignorar)) {
+            $resultado[] = $p;
+        }
+    }
+
+    return array_unique($resultado);
+}
+
+function palavrasCompativeis($palavraIng, $palavraProd)
+{
+    $sinonimos = [
+        'OVO' => ['OVO','OVOS'],
+        'ACUCAR' => ['ACUCAR','REFINADO','CRISTAL'],
+        'OLEO' => ['OLEO'],
+        'FUBA' => ['FUBA','FLOCAO','MILHO'],
+        'FLOCAO' => ['FLOCAO','MILHO'],
+        'FERMENTO' => ['FERMENTO'],
+        'CENOURA' => ['CENOURA'],
+        'SAL' => ['SAL'],
+        'AGUA' => ['AGUA']
+    ];
+
+    if ($palavraIng === $palavraProd) {
+        return true;
+    }
+
+    foreach ($sinonimos as $grupo) {
+        if (in_array($palavraIng, $grupo) && in_array($palavraProd, $grupo)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function calcularPontuacaoProduto($ingrediente, $produto)
+{
+    $palavrasIng = palavrasRelevantes($ingrediente);
+    $palavrasProd = palavrasRelevantes($produto);
+
+    $pontos = 0;
+    $temCompatibilidadeReal = false;
+
+    foreach ($palavrasIng as $palavraIng) {
+        foreach ($palavrasProd as $palavraProd) {
+
+            if (palavrasCompativeis($palavraIng, $palavraProd)) {
+                $pontos += 100;
+                $temCompatibilidadeReal = true;
+            }
+        }
+    }
+
+    if (!$temCompatibilidadeReal) {
+        return 0;
+    }
+
+    similar_text(normalizarTexto($ingrediente), normalizarTexto($produto), $similaridade);
+    $pontos += ($similaridade * 0.2);
+
+    return $pontos;
+}function moeda($valor)
 {
     return number_format((float)$valor, 2, ',', '.');
 }
@@ -78,24 +171,20 @@ $resultado = [];
 
 foreach ($ingredientes as $ing) {
 
-    $descIngNormalizada = normalizarTexto($ing['descricao_ingrediente']);
-    $produtoEncontrado = null;
-    $melhorPontuacao = 0;
+$produtoEncontrado = null;
+$melhorPontuacao = 0;
 
-    foreach ($produtos as $p) {
-        $descProdNormalizada = normalizarTexto($p['descricao'] ?? '');
+foreach ($produtos as $p) {
+    $pontuacao = calcularPontuacaoProduto(
+        $ing['descricao_ingrediente'],
+        $p['descricao'] ?? ''
+    );
 
-        similar_text($descIngNormalizada, $descProdNormalizada, $percentual);
-
-        if (
-            $percentual > $melhorPontuacao ||
-            ($descProdNormalizada !== '' && strpos($descProdNormalizada, $descIngNormalizada) !== false)
-        ) {
-            $melhorPontuacao = $percentual;
-            $produtoEncontrado = $p;
-        }
+    if ($pontuacao > $melhorPontuacao) {
+        $melhorPontuacao = $pontuacao;
+        $produtoEncontrado = $p;
     }
-
+}
     $encontrado = false;
     $saldo_estoque = 0;
     $unidade_estoque = '';
@@ -108,7 +197,7 @@ foreach ($ingredientes as $ing) {
     $preco = 0;
     $custo_estimado = 0;
 
-    if ($produtoEncontrado && $melhorPontuacao >= 45) {
+    if ($produtoEncontrado && $melhorPontuacao >= 80) {
         $encontrado = true;
 
         $saldo_estoque = (float)($produtoEncontrado['saldo'] ?? 0);

@@ -498,7 +498,8 @@ button { padding: 8px 14px; cursor: pointer; }
 <label>Cole aqui o texto da receita encontrada na internet</label>
 <textarea name="texto_receita" style="height:220px;" required></textarea>
 
-<button type="submit">Importar Receita com IA</button>
+<button type="submit">Importar Receita em Texto com IA</button>
+<a href="receitas_video_teste.php">Importar Receita por Vídeo com IA, somente no notebook</a>
 </form>
 </div>
 
@@ -735,7 +736,6 @@ button { padding: 8px 14px; cursor: pointer; }
 </tr>
 <?php endforeach; ?>
 </table>
-
 </body>
 </html>
 

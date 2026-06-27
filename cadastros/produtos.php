@@ -26,11 +26,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $codigo = $_POST['codigo'] ?? '';
     $fornecedor = $_POST['fornecedor'] ?? '';
     $descricao = $_POST['descricao'] ?? '';
-    $tipo_de_produto = $_POST['tipo_de_produto'] ?? 'Produto Acabado';
+    $tipo_de_produto = $_POST['tipo_de_produto'] ?? 'Alimentos';
     $preco = $_POST['preco'] ?? 0;
     $unidade = $_POST['unidade'] ?? '';
     $unidade_consumo = $_POST['unidade_consumo'] ?? '';
-    $fator_conversao_consumo = $_POST['fator_conversao_consumo'] !== '' ? $_POST['fator_conversao_consumo'] : 1;
+
+    $quantidade_embalagem = $_POST['quantidade_embalagem'] !== '' ? $_POST['quantidade_embalagem'] : 1;
+    $peso_unidade_consumo = $_POST['peso_unidade_consumo'] !== '' ? $_POST['peso_unidade_consumo'] : 1;
+
+    if ((float)$quantidade_embalagem <= 0) {
+        $quantidade_embalagem = 1;
+    }
+
+    if ((float)$peso_unidade_consumo <= 0) {
+        $peso_unidade_consumo = 1;
+    }
+
+    $fator_conversao_consumo = (float)$peso_unidade_consumo / (float)$quantidade_embalagem;
+
     $saldo = $_POST['saldo'] ?? 0;
     $cadastrado_em = $_POST['cadastrado_em'] ?? date('Y-m-d');
     $descricao_normalizada = normalizarDescricaoProduto($descricao);
@@ -44,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             preco = :preco,
             unidade = :unidade,
             unidade_consumo = :unidade_consumo,
+            quantidade_embalagem = :quantidade_embalagem,
+            peso_unidade_consumo = :peso_unidade_consumo,
             fator_conversao_consumo = :fator_conversao_consumo,
             saldo = :saldo,
             cadastrado_em = :cadastrado_em,
@@ -54,9 +69,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindParam(':id', $id);
     } else {
         $sql = "INSERT INTO produtos 
-        (codigo, fornecedor, descricao, tipo_de_produto, preco, unidade, unidade_consumo, fator_conversao_consumo, saldo, cadastrado_em, descricao_normalizada)
+        (codigo, fornecedor, descricao, tipo_de_produto, preco, unidade, unidade_consumo, quantidade_embalagem, peso_unidade_consumo, fator_conversao_consumo, saldo, cadastrado_em, descricao_normalizada)
         VALUES 
-        (:codigo, :fornecedor, :descricao, :tipo_de_produto, :preco, :unidade, :unidade_consumo, :fator_conversao_consumo, :saldo, :cadastrado_em, :descricao_normalizada)";
+        (:codigo, :fornecedor, :descricao, :tipo_de_produto, :preco, :unidade, :unidade_consumo, :quantidade_embalagem, :peso_unidade_consumo, :fator_conversao_consumo, :saldo, :cadastrado_em, :descricao_normalizada)";
+
         $stmt = $pdo->prepare($sql);
     }
 
@@ -67,6 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bindParam(':preco', $preco);
     $stmt->bindParam(':unidade', $unidade);
     $stmt->bindParam(':unidade_consumo', $unidade_consumo);
+    $stmt->bindParam(':quantidade_embalagem', $quantidade_embalagem);
+    $stmt->bindParam(':peso_unidade_consumo', $peso_unidade_consumo);
     $stmt->bindParam(':fator_conversao_consumo', $fator_conversao_consumo);
     $stmt->bindParam(':saldo', $saldo);
     $stmt->bindParam(':cadastrado_em', $cadastrado_em);
@@ -132,35 +150,50 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     input, select { margin: 6px 0; padding: 6px; width: 360px; display: block; max-width: 100%; }
     a { margin-right: 10px; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-        }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+    }
 
-        th {
-            background: #2c3e50;
-            color: white;
-            padding: 9px;
-            font-size: 14px;
-        }
+    th {
+        background: #2c3e50;
+        color: white;
+        padding: 9px;
+        font-size: 14px;
+    }
 
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            font-size: 14px;
-        }
+    td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        font-size: 14px;
+    }
 
-        tr:nth-child(even) {
-            background: #f8f8f8;
-        }
+    tr:nth-child(even) {
+        background: #f8f8f8;
+    }
 
+    .info {
+        background: #eef5ff;
+        border: 1px solid #b7d6f2;
+        padding: 10px;
+        margin-bottom: 20px;
+        max-width: 720px;
+    }
 </style>
 
 </head>
 <body>
 
 <h2><?= $editar ? 'Editar Produto' : 'Novo Produto' ?></h2>
+
+<div class="info">
+    <strong>Regra de conversão:</strong><br>
+    Fator = Peso/Volume de 1 unidade de consumo ÷ Quantidade da embalagem.<br><br>
+    Exemplo ovos: 1 cartela com 20 ovos → 1 ÷ 20 = 0,05<br>
+    Exemplo creme de leite: 1 caixa com 500 ml → 1 ÷ 500 = 0,002<br>
+    Exemplo pão francês: compra em KG e consumo em unidade. 1 kg = 1000 g, 1 pão = 50 g → 50 ÷ 1000 = 0,05
+</div>
 
 <form method="post">
 
@@ -183,7 +216,6 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $tipos = [
         'Cozinha',
         'Banheiro',
-        'Remédios',
         'Alimentos',
         'Remédios',
         'Vestuários',
@@ -202,15 +234,26 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <input type="number" name="preco" step="0.01" required value="<?= htmlspecialchars($editar['preco'] ?? '') ?>">
 
 <label>Unidade de Compra / Estoque</label>
-<input name="unidade" required placeholder="Ex: UN, KG, LT, PC" value="<?= htmlspecialchars($editar['unidade'] ?? '') ?>">
+<input name="unidade" required placeholder="Ex: CARTELA, CX, KG, PCT, LT, UN" value="<?= htmlspecialchars($editar['unidade'] ?? '') ?>">
 
-<label>Unidade de Consumo / Produção</label>
-<input name="unidade_consumo" placeholder="Ex: ML, G, KG, UN" value="<?= htmlspecialchars($editar['unidade_consumo'] ?? '') ?>">
+<label>Unidade de Consumo / Receita</label>
+<input name="unidade_consumo" required placeholder="Ex: UN, ML, G, KG" value="<?= htmlspecialchars($editar['unidade_consumo'] ?? '') ?>">
+
+<label>Quantidade da Embalagem</label>
+<input type="number" name="quantidade_embalagem" step="0.0001" required
+       placeholder="Ex: 20 ovos, 500 ml, 1000 g"
+       value="<?= htmlspecialchars($editar['quantidade_embalagem'] ?? 1) ?>">
+
+<label>Peso / Volume de 1 Unidade de Consumo</label>
+<input type="number" name="peso_unidade_consumo" step="0.0001" required
+       placeholder="Ex: 1 para ovos/ml/g, 50 para pão francês"
+       value="<?= htmlspecialchars($editar['peso_unidade_consumo'] ?? 1) ?>">
 
 <label>Fator de Conversão para Consumo</label>
-<input type="number" name="fator_conversao_consumo" step="0.0001" required value="<?= htmlspecialchars($editar['fator_conversao_consumo'] ?? 1) ?>">
+<input type="number" name="fator_conversao_consumo" step="0.0001" readonly
+       value="<?= htmlspecialchars($editar['fator_conversao_consumo'] ?? 1) ?>">
 
-<label>Saldo</label>
+<label>Saldo na Unidade de Compra / Estoque</label>
 <input type="number" name="saldo" step="0.0001" required value="<?= htmlspecialchars($editar['saldo'] ?? 0) ?>">
 
 <label>Cadastrado em</label>
@@ -236,39 +279,42 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <th>Preço / Custo R$</th>
     <th>Unid. Compra</th>
     <th>Unid. Consumo</th>
+    <th>Qtd. Embalagem</th>
+    <th>Peso Unid. Consumo</th>
     <th>Fator Conversão</th>
-    <th>Saldo</th>
+    <th>Saldo Compra</th>
     <th>Saldo Consumo</th>
     <th>Ações</th>
 </tr>
 
 <?php foreach ($eventos as $e): ?>
-<tr>
-    <td><?= htmlspecialchars($e['id_produto']) ?></td>
-    <td><?= htmlspecialchars($e['codigo']) ?></td>
-    <td><?= htmlspecialchars($e['descricao']) ?></td>
-    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
-    <td><?= htmlspecialchars($e['tipo_de_produto'] ?? 'Produto Acabado') ?></td>
-    <td><?= htmlspecialchars(number_format((float)$e['preco'], 2, ',', '.')) ?></td>
-    <td><?= htmlspecialchars($e['unidade']) ?></td>
-    <td><?= htmlspecialchars($e['unidade_consumo'] ?? '') ?></td>
-    <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
-    <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?></td>
-    <?php
+<?php
 $fator_consumo = (float)($e['fator_conversao_consumo'] ?? 1);
+
 if ($fator_consumo <= 0) {
     $fator_consumo = 1;
 }
 
 $saldo_consumo = (float)$e['saldo'] / $fator_consumo;
-
 $unidade_consumo_exibir = ($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '');
 ?>
-
-<td>
-    <?= htmlspecialchars(number_format($saldo_consumo, 4, ',', '.')) ?>
-    <?= htmlspecialchars($unidade_consumo_exibir) ?>
-</td>
+<tr>
+    <td><?= htmlspecialchars($e['id_produto']) ?></td>
+    <td><?= htmlspecialchars($e['codigo']) ?></td>
+    <td><?= htmlspecialchars($e['descricao']) ?></td>
+    <td><?= htmlspecialchars($e['fornecedor']) ?></td>
+    <td><?= htmlspecialchars($e['tipo_de_produto'] ?? 'Alimentos') ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['preco'], 2, ',', '.')) ?></td>
+    <td><?= htmlspecialchars($e['unidade']) ?></td>
+    <td><?= htmlspecialchars($e['unidade_consumo'] ?? '') ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['quantidade_embalagem'] ?? 1), 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['peso_unidade_consumo'] ?? 1), 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)$e['saldo'], 4, ',', '.')) ?> <?= htmlspecialchars($e['unidade']) ?></td>
+    <td>
+        <?= htmlspecialchars(number_format($saldo_consumo, 4, ',', '.')) ?>
+        <?= htmlspecialchars($unidade_consumo_exibir) ?>
+    </td>
     <td>
         <a href="produtos.php?edit=<?= $e['id_produto'] ?>">Editar</a>
         <a href="produtos.php?delete=<?= $e['id_produto'] ?>"
