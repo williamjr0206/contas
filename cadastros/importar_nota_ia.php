@@ -67,9 +67,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                 $fornecedor = trim((string)($p['fornecedor'] ?? ''));
                 $descricao = trim((string)($p['descricao'] ?? ''));
                 $descricao_normalizada = normalizarDescricaoProduto($descricao);
-                $preco = round((float)($p['preco'] ?? 0), 2);
+
                 $unidade = trim((string)($p['unidade'] ?? 'UN'));
                 $quantidade = (float)($p['quantidade'] ?? 0);
+                $valor_total = (float)($p['valor_total'] ?? 0);
+
+                $preco = (float)($p['preco_unitario'] ?? 0);
+
+                if ($preco <= 0 && isset($p['preco'])) {
+                    $preco = (float)$p['preco'];
+                }
+
+                if ($preco <= 0 && $valor_total > 0 && $quantidade > 0) {
+                    $preco = $valor_total / $quantidade;
+                }
+
+                $preco = round($preco, 4);
+
                 $tipo_movimento = $p['tipo_movimento'] ?? 'Entrada';
 
                 if ($descricao === '') {
@@ -104,10 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
 
                 $produtos_processados[$chave] = true;
 
-                /*
-                   1. PRIMEIRO procura por descrição normalizada + fornecedor.
-                   Não usa unidade, porque a IA pode ler UN, KG, CX errado.
-                */
                 $stmt = $pdo->prepare("
                     SELECT *
                     FROM produtos
@@ -123,9 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
 
                 $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                /*
-                   2. Se não encontrou, procura por código + fornecedor.
-                */
                 if (!$produto) {
                     $stmt = $pdo->prepare("
                         SELECT *
@@ -229,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                         documento,
                         id_produto,
                         codigo,
+                        quantidade_digitada,
                         quantidade,
                         tipo
                     )
@@ -238,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                         :documento,
                         :id_produto,
                         :codigo,
+                        :quantidade_digitada,
                         :quantidade,
                         :tipo
                     )
@@ -248,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['importar_produtos']))
                     ':documento' => $documento,
                     ':id_produto' => $id_produto,
                     ':codigo' => $codigo,
+                    'quantidade_digitada' =>$quantidade,
                     ':quantidade' => $quantidade,
                     ':tipo' => $tipo_movimento
                 ]);
@@ -301,7 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem'])) {
       \"codigo\": \"\",
       \"fornecedor\": \"\",
       \"descricao\": \"\",
-      \"preco\": 0,
+      \"preco_unitario\": 0,
+      \"valor_total\": 0,
       \"unidade\": \"\",
       \"quantidade\": 0,
       \"tipo_movimento\": \"Entrada\"
@@ -321,15 +332,18 @@ Regras:
 - forma_de_pagamento_recebimento deve ser Pix, Dinheiro, Cartão Débito, Cartão Crédito ou outra forma encontrada.
 - valor_nominal deve ser o total da nota.
 - valor_pago deve ser o valor pago.
-- data_pagamento deve ser a data da nota quando estiver pago; se a data estiver duvidosa, deixe vazio.
-- data_vencimento pode ser igual à data da nota quando estiver pago; se a data estiver duvidosa, deixe vazio.
+- data_pagamento deve ser a data da nota quando estiver pago.
+- data_vencimento pode ser igual à data da nota quando estiver pago.
 - produtos deve conter os itens identificados na nota.
 - codigo deve ser o código do produto somente se estiver claro.
 - se o código do produto não estiver claro, deixe codigo vazio.
 - não invente código de produto.
-- unidade deve ser UN, KG, LT, CX, PC ou outra unidade encontrada.
+- unidade deve ser UN, KG, LT, CX, PC, G, ML ou outra unidade encontrada.
 - quantidade deve ser a quantidade comprada.
-- preco deve ser o preço unitário quando possível.
+- valor_total deve ser o valor total daquele item na nota.
+- preco_unitario deve ser o preço unitário somente se estiver claramente impresso na nota.
+- Se a nota apresentar somente o valor total do item, deixe preco_unitario igual a 0.
+- Nunca use o valor total como se fosse preço unitário.
 - tipo_movimento deve ser Entrada.
 - não repita produtos iguais.
 - cada item da nota deve aparecer apenas uma vez."
@@ -430,7 +444,7 @@ button {
     border: 1px solid #ccc;
     padding: 15px;
     margin-top: 20px;
-    max-width: 950px;
+    max-width: 1050px;
 }
 
 .erro {
@@ -510,7 +524,8 @@ td {
     <th>Código</th>
     <th>Fornecedor</th>
     <th>Descrição</th>
-    <th>Preço</th>
+    <th>Preço Unitário</th>
+    <th>Valor Total</th>
     <th>UN</th>
     <th>Qtd</th>
     <th>Movimento</th>
@@ -521,7 +536,8 @@ td {
     <td><?= htmlspecialchars($produto['codigo'] ?? '') ?></td>
     <td><?= htmlspecialchars($produto['fornecedor'] ?? '') ?></td>
     <td><?= htmlspecialchars($produto['descricao'] ?? '') ?></td>
-    <td><?= htmlspecialchars((string)($produto['preco'] ?? '')) ?></td>
+    <td><?= htmlspecialchars((string)($produto['preco_unitario'] ?? '')) ?></td>
+    <td><?= htmlspecialchars((string)($produto['valor_total'] ?? '')) ?></td>
     <td><?= htmlspecialchars($produto['unidade'] ?? '') ?></td>
     <td><?= htmlspecialchars((string)($produto['quantidade'] ?? '')) ?></td>
     <td><?= htmlspecialchars($produto['tipo_movimento'] ?? '') ?></td>

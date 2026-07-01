@@ -261,6 +261,7 @@ $stmt = $pdo->query("
         m.codigo,
         m.quantidade_digitada,
         m.quantidade,
+        m.quantidade/p.fator_conversao_consumo as consumo,
         m.tipo,
         p.id_produto,
         p.codigo AS codigo_nf,
@@ -389,7 +390,7 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <td><?= htmlspecialchars($e['fornecedor']) ?></td>
     <td><?= htmlspecialchars($e['descricao']) ?></td>
     <td><?= htmlspecialchars($e['tipo_de_produto'] ?? '') ?></td>
-    <td><?= htmlspecialchars(number_format((float)($e['quantidade_digitada'] ?? $e['quantidade']), 4, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format((float)($e['consumo'] ?? $e['consumo']), 4, ',', '.')) ?></td>
     <td><?= htmlspecialchars($e['unidade'] ?? '') ?></td>
     <td><?= htmlspecialchars(($e['unidade_consumo'] ?? '') ?: ($e['unidade'] ?? '')) ?></td>
     <td><?= htmlspecialchars(number_format((float)($e['fator_conversao_consumo'] ?? 1), 4, ',', '.')) ?></td>
