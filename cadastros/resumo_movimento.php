@@ -44,11 +44,24 @@ $sql = "
         p.descricao,
         p.tipo_de_produto,
         p.preco,
+        p.unidade,
+        p.unidade_consumo,
+        p.fator_conversao_consumo,
 
         SUM(CASE 
-            WHEN m.tipo IN ('Entrada', 'Retorno') THEN m.quantidade * p.preco
+            WHEN m.tipo IN ('Entrada', 'Retorno') THEN m.quantidade
             ELSE 0 
-        END) AS valor_entrada,
+        END) AS quantidade_entrada,
+
+        SUM(CASE 
+            WHEN m.tipo = 'Saída' THEN m.quantidade
+            ELSE 0 
+        END) AS quantidade_saida,
+
+                SUM(CASE 
+                    WHEN m.tipo IN ('Entrada', 'Retorno') THEN m.quantidade * p.preco
+                    ELSE 0 
+                END) AS valor_entrada,
 
         SUM(CASE 
             WHEN m.tipo = 'Saída' THEN m.quantidade * p.preco
@@ -67,7 +80,10 @@ $sql = "
         p.fornecedor,
         p.descricao,
         p.tipo_de_produto,
-        p.preco
+        p.preco,
+        p.unidade,
+        p.unidade_consumo,
+        p.fator_conversao_consumo
 
     ORDER BY
         p.descricao
@@ -172,6 +188,9 @@ $total_saldo_valor = $total_valor_entrada - $total_valor_saida;
     <th>Fornecedor</th>
     <th>Tipo Produto</th>
     <th>Preço R$</th>
+    <th>Qtd Entrada</th>
+    <th>Qtd Saída</th>
+    <th>Saldo Qtd</th>
     <th>Entradas R$</th>
     <th>Saídas R$</th>
     <th>Saldo R$</th>
@@ -189,7 +208,14 @@ $total_saldo_valor = $total_valor_entrada - $total_valor_saida;
 $valor_entrada = (float)$r['valor_entrada'];
 $valor_saida = (float)$r['valor_saida'];
 $saldo_valor = $valor_entrada - $valor_saida;
+
+$qtd_entrada = (float)$r['quantidade_entrada'];
+$qtd_saida = (float)$r['quantidade_saida'];
+$saldo_qtd = $qtd_entrada - $qtd_saida;
+$unidade = $r['unidade'] ?? '';
 ?>
+
+
 
 <tr>
 
@@ -198,6 +224,9 @@ $saldo_valor = $valor_entrada - $valor_saida;
     <td><?= htmlspecialchars($r['fornecedor']) ?></td>
     <td><?= htmlspecialchars($r['tipo_de_produto'] ?? '') ?></td>
     <td><?= htmlspecialchars(number_format((float)$r['preco'], 2, ',', '.')) ?></td>
+    <td><?= htmlspecialchars(number_format($qtd_entrada, 4, ',', '.')) ?> <?= htmlspecialchars($unidade) ?></td>
+    <td><?= htmlspecialchars(number_format($qtd_saida, 4, ',', '.')) ?> <?= htmlspecialchars($unidade) ?></td>
+    <td><?= htmlspecialchars(number_format($saldo_qtd, 4, ',', '.')) ?> <?= htmlspecialchars($unidade) ?></td>
     <td><?= htmlspecialchars(number_format($valor_entrada, 2, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format($valor_saida, 2, ',', '.')) ?></td>
     <td><?= htmlspecialchars(number_format($saldo_valor, 2, ',', '.')) ?></td>
@@ -206,7 +235,7 @@ $saldo_valor = $valor_entrada - $valor_saida;
 <?php endforeach; ?>
 
 <tr>
-    <th colspan="6">TOTAL DO PERÍODO</th>
+    <th colspan="8">TOTAL DO PERÍODO</th>
     <th><?= htmlspecialchars(number_format($total_valor_entrada, 2, ',', '.')) ?></th>
     <th><?= htmlspecialchars(number_format($total_valor_saida, 2, ',', '.')) ?></th>
     <th><?= htmlspecialchars(number_format($total_saldo_valor, 2, ',', '.')) ?></th>
