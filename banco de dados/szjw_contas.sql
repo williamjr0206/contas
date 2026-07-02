@@ -64,9 +64,7 @@ INSERT INTO `grupos` (`id_grupo`, `descricao`) VALUES
 (10, 'Pessoal'),
 (11, 'Presentes'),
 (12, 'Rendimentos'),
-(14, 'Viagem para São Paulo'),
 (15, 'Aplicações Financeiras'),
-(16, 'Despesas com Casas Alugadas'),
 (17, 'Tributos'),
 (18, 'Transações Finânceiras'),
 (19, 'Resgate');
