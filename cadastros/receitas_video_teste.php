@@ -17,6 +17,24 @@ if (file_exists($openaiPath)) {
 $mensagem = '';
 $transcricao = '';
 
+function localizarYtDlp()
+{
+    $possiveis = [
+        'C:\\Users\\William\\AppData\\Local\\Microsoft\\WinGet\\Links\\yt-dlp.exe',
+        getenv('LOCALAPPDATA') . '\\Microsoft\\WinGet\\Links\\yt-dlp.exe',
+        'C:\\yt-dlp\\yt-dlp.exe'
+    ];
+
+    foreach ($possiveis as $caminho) {
+        if ($caminho && file_exists($caminho)) {
+            return $caminho;
+        }
+    }
+
+    return null;
+}
+
+
 function localizarFFmpeg()
 {
     $possiveis = [
@@ -271,40 +289,86 @@ function gravarReceitaNoBanco($pdo, $dados, $transcricao)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
+        $origem_video = $_POST['origem_video'] ?? 'arquivo';
+
         $ffmpeg = localizarFFmpeg();
 
         if (!$ffmpeg) {
             throw new Exception('FFmpeg não encontrado pelo PHP/XAMPP.');
         }
 
-        if (!isset($_FILES['video_receita']) || $_FILES['video_receita']['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception('Erro ao enviar o vídeo.');
-        }
+if ($origem_video === 'arquivo') {
 
+    if (!isset($_FILES['video_receita']) || $_FILES['video_receita']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('Erro ao enviar o vídeo.');
+    }
+
+} elseif ($origem_video === 'youtube') {
+
+    $link_youtube = trim($_POST['link_youtube'] ?? '');
+
+    if ($link_youtube === '') {
+        throw new Exception('Informe o link do YouTube.');
+    }
+
+} elseif ($origem_video === 'facebook' || $origem_video === 'instagram') {
+
+    throw new Exception('Importação por Facebook e Instagram ainda será implementada. Por enquanto use arquivo de vídeo ou YouTube.');
+
+} else {
+    throw new Exception('Origem do vídeo inválida.');
+}
         $pastaTemp = __DIR__ . '/../uploads/temp_receitas/';
 
         if (!is_dir($pastaTemp)) {
             mkdir($pastaTemp, 0777, true);
         }
 
-        $extensao = strtolower(pathinfo($_FILES['video_receita']['name'], PATHINFO_EXTENSION));
-        $permitidas = ['mp4', 'mov', 'webm', 'mkv'];
+$baseNome = 'receita_video_' . date('YmdHis') . '_' . rand(1000, 9999);
+$videoPath = $pastaTemp . $baseNome . '.mp4';
+$audioPath = $pastaTemp . $baseNome . '.mp3';
 
-        if (!in_array($extensao, $permitidas)) {
-            throw new Exception('Formato não permitido. Use MP4, MOV, WEBM ou MKV.');
-        }
+if (file_exists($audioPath)) {
+    unlink($audioPath);
+}
 
-        $baseNome = 'receita_video_' . date('YmdHis') . '_' . rand(1000, 9999);
-        $videoPath = $pastaTemp . $baseNome . '.' . $extensao;
-        $audioPath = $pastaTemp . $baseNome . '.mp3';
-        if (file_exists($audioPath)) {
-            unlink($audioPath);
-        }
+if ($origem_video === 'arquivo') {
 
-        if (!move_uploaded_file($_FILES['video_receita']['tmp_name'], $videoPath)) {
-            throw new Exception('Não foi possível salvar o vídeo temporário.');
-        }
+    $extensao = strtolower(pathinfo($_FILES['video_receita']['name'], PATHINFO_EXTENSION));
+    $permitidas = ['mp4', 'mov', 'webm', 'mkv'];
 
+    if (!in_array($extensao, $permitidas)) {
+        throw new Exception('Formato não permitido. Use MP4, MOV, WEBM ou MKV.');
+    }
+
+    $videoPath = $pastaTemp . $baseNome . '.' . $extensao;
+
+    if (!move_uploaded_file($_FILES['video_receita']['tmp_name'], $videoPath)) {
+        throw new Exception('Não foi possível salvar o vídeo temporário.');
+    }
+
+} elseif ($origem_video === 'youtube') {
+
+    $ytDlp = localizarYtDlp();
+
+    if (!$ytDlp) {
+        throw new Exception('yt-dlp não encontrado pelo PHP/XAMPP.');
+    }
+
+    $link_youtube = trim($_POST['link_youtube'] ?? '');
+
+    $comandoYt = escapeshellarg($ytDlp) .
+        ' -f "bv*[height<=720]+ba/b[height<=720]/b" ' .
+        ' --merge-output-format mp4 ' .
+        ' -o ' . escapeshellarg($videoPath) . ' ' .
+        escapeshellarg($link_youtube) . ' 2>&1';
+
+    exec($comandoYt, $saidaYt, $codigoYt);
+
+    if ($codigoYt !== 0 || !file_exists($videoPath)) {
+        throw new Exception('Erro ao baixar vídeo do YouTube com yt-dlp:<br><pre>' . htmlspecialchars(implode("\n", $saidaYt)) . '</pre>');
+    }
+}
         $comando = escapeshellarg($ffmpeg) .
                    ' -y -i ' . escapeshellarg($videoPath) .
                    ' -vn -acodec libmp3lame -ar 44100 -ac 2 -b:a 128k ' .
@@ -347,7 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
 body { font-family: Arial; margin: 20px; }
 form { margin-bottom: 30px; }
-input, textarea { margin: 6px 0; padding: 6px; width: 620px; display: block; max-width: 100%; }
+input, textarea, select { margin: 6px 0; padding: 6px; width: 620px; display: block; max-width: 100%; }
 textarea { height: 260px; }
 button { padding: 8px 14px; cursor: pointer; }
 .box { border: 1px solid #ddd; padding: 15px; background: #fafafa; margin-bottom: 20px; }
@@ -361,8 +425,32 @@ button { padding: 8px 14px; cursor: pointer; }
 
 <div class="box">
     <form method="post" enctype="multipart/form-data">
-        <label>Selecione um vídeo da receita</label>
-        <input type="file" name="video_receita" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" required>
+
+        <label>Origem do vídeo</label>
+        <select name="origem_video" id="origem_video" required>
+            <option value="arquivo">Arquivo de vídeo no computador</option>
+            <option value="youtube">Link do YouTube</option>
+            <option value="facebook">Link do Facebook</option>
+            <option value="instagram">Link do Instagram</option>
+        </select>
+
+        <div id="campo_arquivo">
+            <label>Selecione um vídeo da receita</label>
+            <input 
+                type="file" 
+                name="video_receita" 
+                accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+            >
+        </div>
+
+        <div id="campo_youtube" style="display:none;">
+            <label>Link do YouTube</label>
+            <input 
+                type="url" 
+                name="link_youtube" 
+                placeholder="Cole aqui o link do vídeo do YouTube"
+            >
+        </div>
 
         <button type="submit">Importar Receita do Vídeo</button>
     </form>
@@ -378,6 +466,14 @@ button { padding: 8px 14px; cursor: pointer; }
     <a href="receitas.php">Voltar para Receitas</a>
 </p>
 
+<script>
+document.getElementById('origem_video').addEventListener('change', function () {
+    const origem = this.value;
+
+    document.getElementById('campo_arquivo').style.display = origem === 'arquivo' ? 'block' : 'none';
+    document.getElementById('campo_youtube').style.display = origem === 'youtube' ? 'block' : 'none';
+});
+</script>
 </body>
 </html>
 
