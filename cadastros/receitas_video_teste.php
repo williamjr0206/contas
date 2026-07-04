@@ -311,13 +311,26 @@ if ($origem_video === 'arquivo') {
         throw new Exception('Informe o link do YouTube.');
     }
 
-} elseif ($origem_video === 'facebook' || $origem_video === 'instagram') {
+} elseif ($origem_video === 'facebook') {
 
-    throw new Exception('Importação por Facebook e Instagram ainda será implementada. Por enquanto use arquivo de vídeo ou YouTube.');
+    $link_facebook = trim($_POST['link_facebook'] ?? '');
+
+    if ($link_facebook === '') {
+        throw new Exception('Informe o link do Facebook.');
+    }
+
+} elseif ($origem_video === 'instagram') {
+
+    $link_instagram = trim($_POST['link_instagram'] ?? '');
+
+    if ($link_instagram === '') {
+        throw new Exception('Informe o link do Instagram.');
+    }
 
 } else {
     throw new Exception('Origem do vídeo inválida.');
 }
+
         $pastaTemp = __DIR__ . '/../uploads/temp_receitas/';
 
         if (!is_dir($pastaTemp)) {
@@ -367,6 +380,49 @@ if ($origem_video === 'arquivo') {
 
     if ($codigoYt !== 0 || !file_exists($videoPath)) {
         throw new Exception('Erro ao baixar vídeo do YouTube com yt-dlp:<br><pre>' . htmlspecialchars(implode("\n", $saidaYt)) . '</pre>');
+    }
+} elseif ($origem_video === 'facebook') {
+
+    $ytDlp = localizarYtDlp();
+
+    if (!$ytDlp) {
+        throw new Exception('yt-dlp não encontrado pelo PHP/XAMPP.');
+    }
+
+    $link_facebook = trim($_POST['link_facebook'] ?? '');
+
+    $comandoYt = escapeshellarg($ytDlp) .
+        ' -f "best[ext=mp4]/best" ' .
+        ' --no-playlist ' .
+        ' -o ' . escapeshellarg($videoPath) . ' ' .
+        escapeshellarg($link_facebook) . ' 2>&1';
+
+    exec($comandoYt, $saidaYt, $codigoYt);
+
+    if ($codigoYt !== 0 || !file_exists($videoPath)) {
+        throw new Exception('Erro ao baixar vídeo do Facebook com yt-dlp:<br><pre>' . htmlspecialchars(implode("\n", $saidaYt)) . '</pre>');
+    }
+
+} elseif ($origem_video === 'instagram') {
+
+    $ytDlp = localizarYtDlp();
+
+    if (!$ytDlp) {
+        throw new Exception('yt-dlp não encontrado pelo PHP/XAMPP.');
+    }
+
+    $link_instagram = trim($_POST['link_instagram'] ?? '');
+
+    $comandoYt = escapeshellarg($ytDlp) .
+        ' -f "best[ext=mp4]/best" ' .
+        ' --no-playlist ' .
+        ' -o ' . escapeshellarg($videoPath) . ' ' .
+        escapeshellarg($link_instagram) . ' 2>&1';
+
+    exec($comandoYt, $saidaYt, $codigoYt);
+
+    if ($codigoYt !== 0 || !file_exists($videoPath)) {
+        throw new Exception('Erro ao baixar vídeo do Instagram com yt-dlp:<br><pre>' . htmlspecialchars(implode("\n", $saidaYt)) . '</pre>');
     }
 }
         $comando = escapeshellarg($ffmpeg) .
@@ -452,6 +508,25 @@ button { padding: 8px 14px; cursor: pointer; }
             >
         </div>
 
+        <div id="campo_facebook" style="display:none;">
+            <label>Link do Facebook</label>
+            <input 
+                type="url" 
+                name="link_facebook" 
+                placeholder="Cole aqui o link do vídeo do Facebook"
+            >
+        </div>
+
+        <div id="campo_instagram" style="display:none;">
+            <label>Link do Instagram</label>
+            <input 
+                type="url" 
+                name="link_instagram" 
+                placeholder="Cole aqui o link do vídeo do Instagram"
+            >
+        </div>
+
+
         <button type="submit">Importar Receita do Vídeo</button>
     </form>
 </div>
@@ -472,6 +547,8 @@ document.getElementById('origem_video').addEventListener('change', function () {
 
     document.getElementById('campo_arquivo').style.display = origem === 'arquivo' ? 'block' : 'none';
     document.getElementById('campo_youtube').style.display = origem === 'youtube' ? 'block' : 'none';
+    document.getElementById('campo_facebook').style.display = origem === 'facebook' ? 'block' : 'none';
+    document.getElementById('campo_instagram').style.display = origem === 'instagram' ? 'block' : 'none';
 });
 </script>
 </body>
