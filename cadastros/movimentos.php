@@ -319,20 +319,20 @@ $eventos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?= (isset($editar['id_produto']) && $editar['id_produto'] == $c['id_produto']) ? 'selected' : '' ?>>
 <?= htmlspecialchars(
     $c['descricao'] .
-    ' | Tipo: ' . ($c['tipo_de_produto'] ?? '') .
-    ' | Fornecedor: ' . $c['fornecedor'] .
-    ' | Cód. NF: ' . $c['codigo'] .
-    ' | Unid. Estoque: ' . ($c['unidade'] ?? '') .
-    ' | Unid. Consumo: ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? '')) .
-    ' | Fator: ' . number_format((float)($c['fator_conversao_consumo'] ?? 1), 4, ',', '.') .
-    ' | Saldo Estoque: ' . number_format((float)$c['saldo'], 4, ',', '.') . ' ' . ($c['unidade'] ?? '') .
-    ' | Saldo Consumo: ' . number_format(
+    ' | Forn.: ' . $c['fornecedor'] .
+    ' | Sld. Cons.: ' . number_format(
         ((float)$c['saldo']) / (((float)($c['fator_conversao_consumo'] ?? 1) > 0) ? (float)$c['fator_conversao_consumo'] : 1),
         4,
         ',',
         '.'
-    ) . ' ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? ''))
-    ) ?>
+    ) . ' ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? '')).    
+    ' | Sld. Est.: ' . number_format((float)$c['saldo'], 4, ',', '.') . ' ' . ($c['unidade'] ?? '') .
+    ' | Cód. NF: ' . $c['codigo'] .
+    ' | Unid. Est.: ' . ($c['unidade'] ?? '') .
+    ' | Unid. Cons.: ' . (($c['unidade_consumo'] ?? '') ?: ($c['unidade'] ?? '')) .
+    ' | Fator: ' . number_format((float)($c['fator_conversao_consumo'] ?? 1), 4, ',', '.') 
+    )
+     ?>
 </option>
 <?php endforeach; ?>
 
