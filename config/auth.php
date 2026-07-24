@@ -154,6 +154,7 @@ function temPermissao(string $chave): bool
             'boas_vindas',
             'cardapio',
             'receitas',
+            'cartao',
             'sair'
         ],
 

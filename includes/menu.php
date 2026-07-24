@@ -11,6 +11,7 @@ $menu = [
     'Cadastros' => [
         ['chave' => 'usuarios', 'titulo' => 'Usuários', 'link' => $baseUrl . 'cadastros/usuarios.php'],
         ['chave' => 'lancamentos', 'titulo' => 'Lançamentos', 'link' => $baseUrl . 'cadastros/lancamentos.php'],
+        ['chave' => 'cartao', 'titulo' => 'Lançamentos de Cartões de Crédito', 'link' => $baseUrl . 'cadastros/cartoes.php'],
         ['chave' => 'classificacoes', 'titulo' => 'Classificação de Lançamentos', 'link' => $baseUrl . 'cadastros/grupos.php'],
         ['chave' => 'nota_fiscal', 'titulo' => 'Importar Nota Fiscal', 'link' => $baseUrl . 'cadastros/importar_nota_ia.php'],
         ['chave' => 'produto', 'titulo' => 'Produtos', 'link' => $baseUrl . 'cadastros/produtos.php'],
@@ -28,6 +29,9 @@ $menu = [
         ['chave' => 'relatorio_financeiro', 'titulo' => 'Prestação de Contas', 'link' => $baseUrl . 'relatorios/prestacao_contas.php'],
         ['chave' => 'estoque_produtos', 'titulo' => 'Estoque de Produtos', 'link' => $baseUrl . 'relatorios/estoque_produtos.php'],
         ['chave' => 'cardapio', 'titulo' => 'Sugestão de Cardápio do Juca', 'link' => $baseUrl . 'relatorios/sugestao_cardapio_ia.php'],
+    ],
+    'Consultas' => [
+        ['chave' => 'consultas', 'titulo' => 'Consulta Cartões de Créditos', 'link' => $baseUrl . 'cadastros/consulta_cartoes.php'],
     ],
 
     'Sessão' => [

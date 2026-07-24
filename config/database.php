@@ -1,3 +1,5 @@
+
+
 <?php
 $hostAtual = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
