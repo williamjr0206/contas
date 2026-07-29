@@ -16,7 +16,7 @@ require __DIR__ . '/../includes/menu.php';
 ========================================================= */
 function normalizarValorMonetario($valor)
 {
-    $valor = trim($valor);
+    $valor = trim((string) $valor);
 
     if ($valor === '') {
         return 0;
@@ -29,7 +29,6 @@ function normalizarValorMonetario($valor)
      * 1000,50
      * 1.000,50
      */
-
     if (
         strpos($valor, ',') !== false
         && strpos($valor, '.') !== false
@@ -42,6 +41,18 @@ function normalizarValorMonetario($valor)
     }
 
     return (float) $valor;
+}
+
+/* =========================================================
+   FUNÇÃO PARA ESCAPAR TEXTO
+========================================================= */
+function h($valor)
+{
+    return htmlspecialchars(
+        (string) $valor,
+        ENT_QUOTES,
+        'UTF-8'
+    );
 }
 
 /* =========================================================
@@ -65,19 +76,23 @@ if (isset($_GET['sucesso'])) {
 if (isset($_GET['erro'])) {
 
     if ($_GET['erro'] === 'dados_invalidos') {
-        $mensagem = 'Preencha corretamente todos os campos obrigatórios.';
+        $mensagem =
+            'Preencha corretamente todos os campos obrigatórios.';
         $tipoMensagem = 'erro';
 
     } elseif ($_GET['erro'] === 'nao_encontrado') {
-        $mensagem = 'O lançamento informado não foi encontrado.';
+        $mensagem =
+            'O lançamento informado não foi encontrado.';
         $tipoMensagem = 'erro';
 
     } elseif ($_GET['erro'] === 'faturado') {
-        $mensagem = 'Esse lançamento já foi faturado e não pode ser alterado ou excluído.';
+        $mensagem =
+            'Esse lançamento já foi faturado e não pode ser alterado ou excluído.';
         $tipoMensagem = 'erro';
 
     } elseif ($_GET['erro'] === 'banco') {
-        $mensagem = 'Ocorreu um erro ao realizar a operação.';
+        $mensagem =
+            'Ocorreu um erro ao realizar a operação.';
         $tipoMensagem = 'erro';
     }
 }
@@ -111,11 +126,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ? (int) $_POST['id_grupo']
         : 0;
 
+    /*
+     * Autor / favorecido é opcional.
+     * Quando não for informado, será salvo como NULL.
+     */
+    $idAutor = isset($_POST['id_autor'])
+        ? (int) $_POST['id_autor']
+        : 0;
+
+    if ($idAutor <= 0) {
+        $idAutor = null;
+    }
+
     $valorInformado = isset($_POST['valor'])
         ? $_POST['valor']
         : '';
 
-    $valor = normalizarValorMonetario($valorInformado);
+    $valor = normalizarValorMonetario(
+        $valorInformado
+    );
 
     /*
      * Documento pode ficar vazio.
@@ -138,7 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header(
             'Location: '
             . BASE_URL
-            . 'cadastros/cartoes.php?erro=dados_invalidos'
+            . 'cadastros/cartoes.php'
+            . '?erro=dados_invalidos'
         );
         exit;
     }
@@ -153,12 +183,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
         !$dataObjeto
-        || $dataObjeto->format('Y-m-d') !== $dataLancamento
+        || $dataObjeto->format('Y-m-d')
+            !== $dataLancamento
     ) {
         header(
             'Location: '
             . BASE_URL
-            . 'cadastros/cartoes.php?erro=dados_invalidos'
+            . 'cadastros/cartoes.php'
+            . '?erro=dados_invalidos'
         );
         exit;
     }
@@ -183,9 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id_lancamento_cartao = :id
             ");
 
-            $stmtVerificar->execute([
+            $stmtVerificar->execute(array(
                 ':id' => $id
-            ]);
+            ));
 
             $registroAtual = $stmtVerificar->fetch(
                 PDO::FETCH_ASSOC
@@ -195,25 +227,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header(
                     'Location: '
                     . BASE_URL
-                    . 'cadastros/cartoes.php?erro=nao_encontrado'
+                    . 'cadastros/cartoes.php'
+                    . '?erro=nao_encontrado'
                 );
                 exit;
             }
 
             /*
              * Somente lançamentos com status Aberto
-             * e sem vínculo com uma fatura podem ser editados.
+             * e sem vínculo com fatura podem ser editados.
              */
             if (
                 $registroAtual['status'] !== 'Aberto'
                 || !empty(
-                    $registroAtual['id_lancamento_fatura']
+                    $registroAtual[
+                        'id_lancamento_fatura'
+                    ]
                 )
             ) {
                 header(
                     'Location: '
                     . BASE_URL
-                    . 'cadastros/cartoes.php?erro=faturado'
+                    . 'cadastros/cartoes.php'
+                    . '?erro=faturado'
                 );
                 exit;
             }
@@ -226,6 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     descricao = :descricao,
                     id_cartao = :id_cartao,
                     id_grupo = :id_grupo,
+                    id_autor = :id_autor,
                     valor = :valor
                 WHERE id_lancamento_cartao = :id
                   AND status = 'Aberto'
@@ -234,15 +271,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare($sql);
 
-            $stmt->execute([
-                ':documento_numero' => $documentoNumero,
-                ':data_lancamento' => $dataLancamento,
-                ':descricao' => $descricao,
-                ':id_cartao' => $idCartao,
-                ':id_grupo' => $idGrupo,
-                ':valor' => $valor,
-                ':id' => $id
-            ]);
+            $stmt->bindValue(
+                ':documento_numero',
+                $documentoNumero,
+                $documentoNumero === null
+                    ? PDO::PARAM_NULL
+                    : PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':data_lancamento',
+                $dataLancamento,
+                PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':descricao',
+                $descricao,
+                PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':id_cartao',
+                $idCartao,
+                PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':id_grupo',
+                $idGrupo,
+                PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':id_autor',
+                $idAutor,
+                $idAutor === null
+                    ? PDO::PARAM_NULL
+                    : PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':valor',
+                $valor
+            );
+
+            $stmt->bindValue(
+                ':id',
+                $id,
+                PDO::PARAM_INT
+            );
+
+            $stmt->execute();
 
         /* =================================================
            INSERIR
@@ -256,6 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     descricao,
                     id_cartao,
                     id_grupo,
+                    id_autor,
                     valor,
                     status,
                     id_lancamento_fatura
@@ -265,6 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     :descricao,
                     :id_cartao,
                     :id_grupo,
+                    :id_autor,
                     :valor,
                     'Aberto',
                     NULL
@@ -273,32 +355,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare($sql);
 
-            $stmt->execute([
-                ':documento_numero' => $documentoNumero,
-                ':data_lancamento' => $dataLancamento,
-                ':descricao' => $descricao,
-                ':id_cartao' => $idCartao,
-                ':id_grupo' => $idGrupo,
-                ':valor' => $valor
-            ]);
+            $stmt->bindValue(
+                ':documento_numero',
+                $documentoNumero,
+                $documentoNumero === null
+                    ? PDO::PARAM_NULL
+                    : PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':data_lancamento',
+                $dataLancamento,
+                PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':descricao',
+                $descricao,
+                PDO::PARAM_STR
+            );
+
+            $stmt->bindValue(
+                ':id_cartao',
+                $idCartao,
+                PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':id_grupo',
+                $idGrupo,
+                PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':id_autor',
+                $idAutor,
+                $idAutor === null
+                    ? PDO::PARAM_NULL
+                    : PDO::PARAM_INT
+            );
+
+            $stmt->bindValue(
+                ':valor',
+                $valor
+            );
+
+            $stmt->execute();
         }
 
         header(
             'Location: '
             . BASE_URL
-            . 'cadastros/cartoes.php?sucesso=salvo'
+            . 'cadastros/cartoes.php'
+            . '?sucesso=salvo'
         );
         exit;
 
     } catch (PDOException $e) {
 
         /*
-         * Durante os testes, deixei o erro completo visível.
-         * Isso ajuda a descobrir problemas na tabela.
+         * Durante os testes, o erro completo permanece visível.
          */
         die(
-            '<strong>Erro ao salvar o lançamento:</strong><br>'
-            . htmlspecialchars($e->getMessage())
+            '<strong>Erro ao salvar o lançamento:</strong>'
+            . '<br><br>'
+            . h($e->getMessage())
         );
     }
 }
@@ -314,7 +435,8 @@ if (isset($_GET['delete'])) {
         header(
             'Location: '
             . BASE_URL
-            . 'cadastros/cartoes.php?erro=nao_encontrado'
+            . 'cadastros/cartoes.php'
+            . '?erro=nao_encontrado'
         );
         exit;
     }
@@ -333,41 +455,42 @@ if (isset($_GET['delete'])) {
             WHERE id_lancamento_cartao = :id
         ");
 
-        $stmtVerificar->execute([
+        $stmtVerificar->execute(array(
             ':id' => $idExcluir
-        ]);
+        ));
 
-        $registro = $stmtVerificar->fetch(PDO::FETCH_ASSOC);
+        $registro = $stmtVerificar->fetch(
+            PDO::FETCH_ASSOC
+        );
 
         if (!$registro) {
             header(
                 'Location: '
                 . BASE_URL
-                . 'cadastros/cartoes.php?erro=nao_encontrado'
+                . 'cadastros/cartoes.php'
+                . '?erro=nao_encontrado'
             );
             exit;
         }
 
         /*
-         * Não permite excluir um lançamento já faturado.
+         * Não permite excluir lançamento já faturado.
          */
         if (
             $registro['status'] !== 'Aberto'
-            || !empty($registro['id_lancamento_fatura'])
+            || !empty(
+                $registro['id_lancamento_fatura']
+            )
         ) {
             header(
                 'Location: '
                 . BASE_URL
-                . 'cadastros/cartoes.php?erro=faturado'
+                . 'cadastros/cartoes.php'
+                . '?erro=faturado'
             );
             exit;
         }
 
-        /*
-         * Correção:
-         * a exclusão deve acontecer em lancamentos_cartoes,
-         * e não na tabela cartoes.
-         */
         $stmtExcluir = $pdo->prepare("
             DELETE FROM lancamentos_cartoes
             WHERE id_lancamento_cartao = :id
@@ -375,22 +498,24 @@ if (isset($_GET['delete'])) {
               AND id_lancamento_fatura IS NULL
         ");
 
-        $stmtExcluir->execute([
+        $stmtExcluir->execute(array(
             ':id' => $idExcluir
-        ]);
+        ));
 
         header(
             'Location: '
             . BASE_URL
-            . 'cadastros/cartoes.php?sucesso=excluido'
+            . 'cadastros/cartoes.php'
+            . '?sucesso=excluido'
         );
         exit;
 
     } catch (PDOException $e) {
 
         die(
-            '<strong>Erro ao excluir o lançamento:</strong><br>'
-            . htmlspecialchars($e->getMessage())
+            '<strong>Erro ao excluir o lançamento:</strong>'
+            . '<br><br>'
+            . h($e->getMessage())
         );
     }
 }
@@ -412,17 +537,20 @@ if (isset($_GET['edit'])) {
             WHERE id_lancamento_cartao = :id
         ");
 
-        $stmtEditar->execute([
+        $stmtEditar->execute(array(
             ':id' => $idEditar
-        ]);
+        ));
 
-        $editar = $stmtEditar->fetch(PDO::FETCH_ASSOC);
+        $editar = $stmtEditar->fetch(
+            PDO::FETCH_ASSOC
+        );
 
         if (!$editar) {
             header(
                 'Location: '
                 . BASE_URL
-                . 'cadastros/cartoes.php?erro=nao_encontrado'
+                . 'cadastros/cartoes.php'
+                . '?erro=nao_encontrado'
             );
             exit;
         }
@@ -433,12 +561,15 @@ if (isset($_GET['edit'])) {
          */
         if (
             $editar['status'] !== 'Aberto'
-            || !empty($editar['id_lancamento_fatura'])
+            || !empty(
+                $editar['id_lancamento_fatura']
+            )
         ) {
             header(
                 'Location: '
                 . BASE_URL
-                . 'cadastros/cartoes.php?erro=faturado'
+                . 'cadastros/cartoes.php'
+                . '?erro=faturado'
             );
             exit;
         }
@@ -456,7 +587,9 @@ $stmtGrupos = $pdo->query("
     ORDER BY descricao
 ");
 
-$grupos = $stmtGrupos->fetchAll(PDO::FETCH_ASSOC);
+$grupos = $stmtGrupos->fetchAll(
+    PDO::FETCH_ASSOC
+);
 
 /* =========================================================
    BUSCAR CARTÕES
@@ -469,7 +602,24 @@ $stmtCartoes = $pdo->query("
     ORDER BY descricao
 ");
 
-$cartoes = $stmtCartoes->fetchAll(PDO::FETCH_ASSOC);
+$cartoes = $stmtCartoes->fetchAll(
+    PDO::FETCH_ASSOC
+);
+
+/* =========================================================
+   BUSCAR AUTORES / FAVORECIDOS
+========================================================= */
+$stmtAutores = $pdo->query("
+    SELECT
+        id_autor,
+        nome
+    FROM autores
+    ORDER BY nome
+");
+
+$autores = $stmtAutores->fetchAll(
+    PDO::FETCH_ASSOC
+);
 
 /* =========================================================
    LISTAR LANÇAMENTOS
@@ -482,12 +632,14 @@ $stmtLancamentos = $pdo->query("
         lc.descricao,
         lc.id_cartao,
         lc.id_grupo,
+        lc.id_autor,
         lc.valor,
         lc.status,
         lc.id_lancamento_fatura,
 
         c.descricao AS cartao_descricao,
-        g.descricao AS grupo_descricao
+        g.descricao AS grupo_descricao,
+        a.nome AS autor_nome
 
     FROM lancamentos_cartoes lc
 
@@ -497,8 +649,10 @@ $stmtLancamentos = $pdo->query("
     LEFT JOIN grupos g
         ON g.id_grupo = lc.id_grupo
 
+    LEFT JOIN autores a
+        ON a.id_autor = lc.id_autor
+
     ORDER BY
-        lc.documento_numero DESC,
         lc.data_lancamento DESC,
         lc.id_lancamento_cartao DESC
 ");
@@ -533,7 +687,7 @@ body {
 }
 
 .container {
-    max-width: 1250px;
+    max-width: 1350px;
     margin: 0 auto;
 }
 
@@ -551,7 +705,8 @@ h2 {
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(260px, 1fr));
+    grid-template-columns:
+        repeat(2, minmax(260px, 1fr));
     gap: 15px 22px;
 }
 
@@ -711,17 +866,14 @@ th {
     <?php if ($mensagem !== ''): ?>
 
         <?php
-        $classeMensagem = '';
-
-        if ($tipoMensagem === 'sucesso') {
-            $classeMensagem = 'mensagem-sucesso';
-        } else {
-            $classeMensagem = 'mensagem-erro';
-        }
+        $classeMensagem =
+            $tipoMensagem === 'sucesso'
+                ? 'mensagem-sucesso'
+                : 'mensagem-erro';
         ?>
 
-        <div class="mensagem <?= $classeMensagem ?>">
-            <?= htmlspecialchars($mensagem) ?>
+        <div class="mensagem <?= h($classeMensagem) ?>">
+            <?= h($mensagem) ?>
         </div>
 
     <?php endif; ?>
@@ -738,9 +890,13 @@ th {
             <input
                 type="hidden"
                 name="id"
-                value="<?= htmlspecialchars(
-                    isset($editar['id_lancamento_cartao'])
-                        ? $editar['id_lancamento_cartao']
+                value="<?= h(
+                    isset(
+                        $editar['id_lancamento_cartao']
+                    )
+                        ? $editar[
+                            'id_lancamento_cartao'
+                        ]
                         : ''
                 ) ?>"
             >
@@ -759,9 +915,13 @@ th {
                         name="documento_numero"
                         maxlength="50"
                         placeholder="Número, código ou NSU"
-                        value="<?= htmlspecialchars(
-                            isset($editar['documento_numero'])
-                                ? $editar['documento_numero']
+                        value="<?= h(
+                            isset(
+                                $editar['documento_numero']
+                            )
+                                ? $editar[
+                                    'documento_numero'
+                                ]
                                 : ''
                         ) ?>"
                     >
@@ -779,9 +939,13 @@ th {
                         id="data_lancamento"
                         name="data_lancamento"
                         required
-                        value="<?= htmlspecialchars(
-                            isset($editar['data_lancamento'])
-                                ? $editar['data_lancamento']
+                        value="<?= h(
+                            isset(
+                                $editar['data_lancamento']
+                            )
+                                ? $editar[
+                                    'data_lancamento'
+                                ]
                                 : date('Y-m-d')
                         ) ?>"
                     >
@@ -801,7 +965,7 @@ th {
                         maxlength="150"
                         required
                         placeholder="Descrição da compra"
-                        value="<?= htmlspecialchars(
+                        value="<?= h(
                             isset($editar['descricao'])
                                 ? $editar['descricao']
                                 : ''
@@ -826,7 +990,9 @@ th {
                             Selecione
                         </option>
 
-                        <?php foreach ($cartoes as $cartao): ?>
+                        <?php foreach (
+                            $cartoes as $cartao
+                        ): ?>
 
                             <?php
                             $cartaoSelecionado = '';
@@ -834,17 +1000,21 @@ th {
                             if (
                                 isset($editar['id_cartao'])
                                 && (int) $editar['id_cartao']
-                                    === (int) $cartao['id_cartao']
+                                    === (int)
+                                        $cartao['id_cartao']
                             ) {
-                                $cartaoSelecionado = 'selected';
+                                $cartaoSelecionado =
+                                    'selected';
                             }
                             ?>
 
                             <option
-                                value="<?= (int) $cartao['id_cartao'] ?>"
+                                value="<?= (int)
+                                    $cartao['id_cartao']
+                                ?>"
                                 <?= $cartaoSelecionado ?>
                             >
-                                <?= htmlspecialchars(
+                                <?= h(
                                     $cartao['descricao']
                                 ) ?>
                             </option>
@@ -871,7 +1041,9 @@ th {
                             Selecione
                         </option>
 
-                        <?php foreach ($grupos as $grupo): ?>
+                        <?php foreach (
+                            $grupos as $grupo
+                        ): ?>
 
                             <?php
                             $grupoSelecionado = '';
@@ -879,23 +1051,71 @@ th {
                             if (
                                 isset($editar['id_grupo'])
                                 && (int) $editar['id_grupo']
-                                    === (int) $grupo['id_grupo']
+                                    === (int)
+                                        $grupo['id_grupo']
                             ) {
-                                $grupoSelecionado = 'selected';
+                                $grupoSelecionado =
+                                    'selected';
                             }
                             ?>
 
                             <option
-                                value="<?= (int) $grupo['id_grupo'] ?>"
+                                value="<?= (int)
+                                    $grupo['id_grupo']
+                                ?>"
                                 <?= $grupoSelecionado ?>
                             >
-                                <?= htmlspecialchars(
+                                <?= h(
                                     $grupo['descricao']
                                 ) ?>
                             </option>
 
                         <?php endforeach; ?>
 
+                    </select>
+
+                </div>
+
+                <div class="campo">
+
+                    <label for="id_autor">
+                        Autor / Favorecido
+                    </label>
+
+                    <select
+                        id="id_autor"
+                        name="id_autor"
+                    >
+
+                        <option value="">
+                            Sem autor
+                        </option>
+
+                                <?php
+                                $idAutorEditado = 0;
+
+                                if (
+                                    $editar
+                                    && isset($editar['id_autor'])
+                                    && $editar['id_autor'] !== null
+                                ) {
+                                    $idAutorEditado = (int) $editar['id_autor'];
+                                }
+                                ?>
+
+                                <?php foreach ($autores as $autor): ?>
+
+                                    <option
+                                        value="<?= (int) $autor['id_autor'] ?>"
+                                        <?= (
+                                            $idAutorEditado ===
+                                            (int) $autor['id_autor']
+                                        ) ? 'selected="selected"' : '' ?>
+                                    >
+                                        <?= h($autor['nome']) ?>
+                                    </option>
+
+                                <?php endforeach; ?>
                     </select>
 
                 </div>
@@ -916,9 +1136,10 @@ th {
                         placeholder="0,00"
                         value="<?php
                         if (isset($editar['valor'])) {
-                            echo htmlspecialchars(
+                            echo h(
                                 number_format(
-                                    (float) $editar['valor'],
+                                    (float)
+                                    $editar['valor'],
                                     2,
                                     '.',
                                     ''
@@ -935,7 +1156,10 @@ th {
             <div class="acoes-formulario">
 
                 <button type="submit">
-                    <?= $editar ? 'Atualizar' : 'Salvar' ?>
+                    <?= $editar
+                        ? 'Atualizar'
+                        : 'Salvar'
+                    ?>
                 </button>
 
                 <?php if ($editar): ?>
@@ -971,6 +1195,7 @@ th {
                         <th>Descrição</th>
                         <th>Cartão</th>
                         <th>Grupo</th>
+                        <th>Autor / Favorecido</th>
                         <th>Valor</th>
                         <th>Status</th>
                         <th>Ações</th>
@@ -980,11 +1205,13 @@ th {
 
                 <tbody>
 
-                    <?php if (count($lancamentos) === 0): ?>
+                    <?php if (
+                        count($lancamentos) === 0
+                    ): ?>
 
                         <tr>
                             <td
-                                colspan="8"
+                                colspan="9"
                                 class="sem-registros"
                             >
                                 Nenhum lançamento de cartão cadastrado.
@@ -993,59 +1220,63 @@ th {
 
                     <?php else: ?>
 
-                        <?php foreach ($lancamentos as $lancamento): ?>
+                        <?php foreach (
+                            $lancamentos as $lancamento
+                        ): ?>
 
                             <?php
-                            $status = isset($lancamento['status'])
-                                ? $lancamento['status']
-                                : 'Aberto';
+                            $status =
+                                isset($lancamento['status'])
+                                    ? $lancamento['status']
+                                    : 'Aberto';
 
-                            /*
-                             * Compatível com PHP 7.4.
-                             * Não utiliza o comando match.
-                             */
                             $classeStatus = 'status-aberto';
 
                             if ($status === 'Faturado') {
-                                $classeStatus = 'status-faturado';
+                                $classeStatus =
+                                    'status-faturado';
 
                             } elseif ($status === 'Pago') {
-                                $classeStatus = 'status-pago';
+                                $classeStatus =
+                                    'status-pago';
 
-                            } elseif ($status === 'Cancelado') {
-                                $classeStatus = 'status-cancelado';
+                            } elseif (
+                                $status === 'Cancelado'
+                            ) {
+                                $classeStatus =
+                                    'status-cancelado';
                             }
 
-                            $podeAlterar = false;
-
-                            if (
+                            $podeAlterar =
                                 $status === 'Aberto'
                                 && empty(
                                     $lancamento[
                                         'id_lancamento_fatura'
                                     ]
-                                )
-                            ) {
-                                $podeAlterar = true;
-                            }
+                                );
 
                             $dataFormatada = '';
 
                             if (
                                 !empty(
-                                    $lancamento['data_lancamento']
-                                )
-                            ) {
-                                $dataObjeto = DateTime::createFromFormat(
-                                    'Y-m-d',
                                     $lancamento[
                                         'data_lancamento'
                                     ]
-                                );
+                                )
+                            ) {
+                                $dataObjeto =
+                                    DateTime::createFromFormat(
+                                        'Y-m-d',
+                                        $lancamento[
+                                            'data_lancamento'
+                                        ]
+                                    );
 
                                 if ($dataObjeto) {
                                     $dataFormatada =
-                                        $dataObjeto->format('d/m/Y');
+                                        $dataObjeto->format(
+                                            'd/m/Y'
+                                        );
                                 } else {
                                     $dataFormatada =
                                         $lancamento[
@@ -1058,7 +1289,7 @@ th {
                             <tr>
 
                                 <td>
-                                    <?= htmlspecialchars(
+                                    <?= h(
                                         isset(
                                             $lancamento[
                                                 'documento_numero'
@@ -1072,19 +1303,19 @@ th {
                                 </td>
 
                                 <td>
-                                    <?= htmlspecialchars(
-                                        $dataFormatada
+                                    <?= h($dataFormatada) ?>
+                                </td>
+
+                                <td>
+                                    <?= h(
+                                        $lancamento[
+                                            'descricao'
+                                        ]
                                     ) ?>
                                 </td>
 
                                 <td>
-                                    <?= htmlspecialchars(
-                                        $lancamento['descricao']
-                                    ) ?>
-                                </td>
-
-                                <td>
-                                    <?= htmlspecialchars(
+                                    <?= h(
                                         isset(
                                             $lancamento[
                                                 'cartao_descricao'
@@ -1098,7 +1329,7 @@ th {
                                 </td>
 
                                 <td>
-                                    <?= htmlspecialchars(
+                                    <?= h(
                                         isset(
                                             $lancamento[
                                                 'grupo_descricao'
@@ -1108,13 +1339,28 @@ th {
                                                 'grupo_descricao'
                                             ]
                                             : ''
+                                    ) ?>
+                                </td>
+
+                                <td>
+                                    <?= h(
+                                        !empty(
+                                            $lancamento[
+                                                'autor_nome'
+                                            ]
+                                        )
+                                            ? $lancamento[
+                                                'autor_nome'
+                                            ]
+                                            : 'Sem autor'
                                     ) ?>
                                 </td>
 
                                 <td class="valor">
                                     R$
                                     <?= number_format(
-                                        (float) $lancamento['valor'],
+                                        (float)
+                                        $lancamento['valor'],
                                         2,
                                         ',',
                                         '.'
@@ -1124,9 +1370,11 @@ th {
                                 <td>
 
                                     <span
-                                        class="status <?= $classeStatus ?>"
+                                        class="status <?= h(
+                                            $classeStatus
+                                        ) ?>"
                                     >
-                                        <?= htmlspecialchars($status) ?>
+                                        <?= h($status) ?>
                                     </span>
 
                                 </td>
