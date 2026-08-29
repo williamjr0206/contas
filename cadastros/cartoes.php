@@ -653,8 +653,8 @@ $stmtLancamentos = $pdo->query("
         ON a.id_autor = lc.id_autor
 
     ORDER BY
-        lc.data_lancamento DESC,
-        lc.id_lancamento_cartao DESC
+        lc.documento_numero DESC
+        
 ");
 
 $lancamentos = $stmtLancamentos->fetchAll(
